@@ -95,12 +95,17 @@ public class SlotService {
     }
 
     public List<Map<String, Object>> getAvailableVendorsForSchedule(String serviceName, String serviceBrand, String subService, String workType, String date, String time) throws Exception {
+        System.out.println("[SlotService] === getAvailableVendorsForSchedule === serviceName='" + serviceName + "', brand='" + serviceBrand + "', sub='" + subService + "', workType='" + workType + "', date='" + date + "', time='" + time + "'");
         // Get all vendor slots for the date with available > 0
         List<Map<String, Object>> slots = firestoreService.getWhere("vendor_slots", "slot_date", date);
+        System.out.println("[SlotService] Found " + slots.size() + " slot(s) for date " + date);
         List<String> vendorIds = new ArrayList<>();
         for (Map<String, Object> slot : slots) {
             int available = ((Number) slot.getOrDefault("available_slots", 0)).intValue();
-            if (available <= 0) continue;
+            if (available <= 0) {
+                System.out.println("[SlotService]   SKIP slot (no available) vendor=" + slot.get("vendor_id"));
+                continue;
+            }
             
             // Check that the slot matches the selected subservice and service category
             String slotService = (String) slot.get("service_type");
@@ -119,12 +124,17 @@ public class SlotService {
                 subServiceMatches = (slotSubService != null && slotSubService.equalsIgnoreCase(subService));
             }
             
-            if (!serviceMatches || !subServiceMatches) continue;
+            if (!serviceMatches || !subServiceMatches) {
+                System.out.println("[SlotService]   SKIP slot (service/sub mismatch) vendor=" + slot.get("vendor_id") + ", slotService='" + slotService + "', slotSub='" + slotSubService + "', serviceMatch=" + serviceMatches + ", subMatch=" + subServiceMatches);
+                continue;
+            }
             
             // Check time range [time_from, time_to]
             String timeFrom = (String) slot.get("time_from");
             String timeTo = (String) slot.get("time_to");
-            if (isTimeWithinRange(time, timeFrom, timeTo)) {
+            boolean inRange = isTimeWithinRange(time, timeFrom, timeTo);
+            System.out.println("[SlotService]   TIME CHECK vendor=" + slot.get("vendor_id") + " | customer='" + time + "' vs range=['" + timeFrom + "', '" + timeTo + "'] => " + (inRange ? "IN RANGE ✓" : "OUT OF RANGE ✗"));
+            if (inRange) {
                 vendorIds.add((String) slot.get("vendor_id"));
             }
         }
@@ -188,29 +198,49 @@ public class SlotService {
     }
 
     private boolean isTimeWithinRange(String timeStr, String fromStr, String toStr) {
-        if (timeStr == null || fromStr == null || toStr == null) return false;
+        if (timeStr == null || timeStr.isBlank() || fromStr == null || fromStr.isBlank() || toStr == null || toStr.isBlank()) return false;
         try {
-            java.time.LocalTime time = parseTimeStr(timeStr);
-            java.time.LocalTime from = parseTimeStr(fromStr);
-            java.time.LocalTime to = parseTimeStr(toStr);
-            return !time.isBefore(from) && !time.isAfter(to);
+            int timeMinutes = toMinutesSinceMidnight(timeStr);
+            int fromMinutes = toMinutesSinceMidnight(fromStr);
+            int toMinutes = toMinutesSinceMidnight(toStr);
+            return timeMinutes >= fromMinutes && timeMinutes <= toMinutes;
         } catch (Exception e) {
-            return timeStr.compareTo(fromStr) >= 0 && timeStr.compareTo(toStr) <= 0;
+            System.err.println("[SlotService] isTimeWithinRange FAILED — time: '" + timeStr + "', from: '" + fromStr + "', to: '" + toStr + "' — " + e.getMessage());
+            return false;
         }
     }
 
-    private java.time.LocalTime parseTimeStr(String timeStr) {
-        timeStr = timeStr.trim().toUpperCase();
-        if (timeStr.contains("AM") || timeStr.contains("PM")) {
-            String pattern = timeStr.matches("\\d{2}:\\d{2}\\s*(AM|PM)") ? "hh:mm a" : "h:mm a";
-            timeStr = timeStr.replaceAll("\\s*(AM|PM)", " $1");
-            return java.time.LocalTime.parse(timeStr, java.time.format.DateTimeFormatter.ofPattern(pattern, java.util.Locale.US));
+    /**
+     * Convert any common time string to minutes since midnight.
+     * Handles: "HH:mm", "HH:mm:ss", "h:mm AM/PM", "hh:mm AM/PM", "HH:mm AM/PM" (invalid but tolerated).
+     */
+    private int toMinutesSinceMidnight(String raw) {
+        String timeStr = raw.trim();
+
+        // Normalize whitespace and case
+        timeStr = timeStr.replaceAll("\\s+", " ").trim().toUpperCase();
+
+        boolean isPM = timeStr.contains("PM");
+        boolean isAM = timeStr.contains("AM");
+
+        // Remove AM/PM suffix
+        timeStr = timeStr.replaceAll("\\s*(AM|PM)", "").trim();
+
+        // Split by colon — expected: [hour, minute] or [hour, minute, second]
+        String[] parts = timeStr.split(":");
+        if (parts.length < 2) throw new IllegalArgumentException("Cannot parse time: " + raw);
+
+        int hour = Integer.parseInt(parts[0].trim());
+        int minute = Integer.parseInt(parts[1].trim());
+        // parts[2] (seconds) is intentionally ignored
+
+        if (isPM || isAM) {
+            // 12-hour clock
+            if (isPM && hour != 12) hour += 12;
+            if (isAM && hour == 12) hour = 0;
         }
-        if (timeStr.length() == 5) {
-            return java.time.LocalTime.parse(timeStr, java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
-        } else if (timeStr.length() == 8) {
-            return java.time.LocalTime.parse(timeStr, java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
-        }
-        return java.time.LocalTime.parse(timeStr);
+        // else: already 24-hour format, no conversion needed
+
+        return hour * 60 + minute;
     }
 }

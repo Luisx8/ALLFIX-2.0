@@ -49,9 +49,7 @@ function DashboardHome() {
       {/* Service Request Counters */}
       <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
         <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3.5">Service Management Requests</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard title="Pending Main Services" value={stats?.pendingMainServices ?? 0} icon={<Building2 className="w-5 h-5" />} color="red" />
-          <StatCard title="Pending Sub Services" value={stats?.pendingSubServices ?? 0} icon={<Wrench className="w-5 h-5" />} color="yellow" />
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <StatCard title="Pending Work Types" value={stats?.pendingWorkTypes ?? 0} icon={<Sparkles className="w-5 h-5" />} color="navy" />
         </div>
       </div>
@@ -1259,7 +1257,7 @@ function ServicesManagementPage() {
 
   // Sub-navigation tab
   const [activeTab, setActiveTab] = useState<'catalog' | 'proposals'>('catalog');
-  const [proposalsTab, setProposalsTab] = useState<'mains' | 'subs' | 'workTypes'>('mains');
+  const [proposalsTab, setProposalsTab] = useState<'workTypes'>('workTypes');
 
   // Request queues state
   const [pendingMains, setPendingMains] = useState<any[]>([]);
@@ -1771,10 +1769,10 @@ function ServicesManagementPage() {
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <span>Vendor Proposals & Requests</span>
-          {(pendingMains.length + pendingSubs.length + pendingWorkTypes.length) > 0 && (
+          <span>Vendor Requests</span>
+          {pendingWorkTypes.length > 0 && (
             <span className="w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center animate-pulse">
-              {pendingMains.length + pendingSubs.length + pendingWorkTypes.length}
+              {pendingWorkTypes.length}
             </span>
           )}
         </button>
@@ -1805,28 +1803,8 @@ function ServicesManagementPage() {
         <div className="space-y-6">
           {/* Request Sub tabs */}
           <div className="flex gap-2">
-            <button onClick={() => setProposalsTab('mains')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                proposalsTab === 'mains' 
-                  ? 'bg-brand-navy text-white dark:bg-brand-green dark:text-slate-900 shadow-sm' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-650 dark:bg-slate-800/60 dark:hover:bg-slate-800'
-              }`}>
-              Main Services ({pendingMains.length})
-            </button>
-            <button onClick={() => setProposalsTab('subs')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                proposalsTab === 'subs' 
-                  ? 'bg-brand-navy text-white dark:bg-brand-green dark:text-slate-900 shadow-sm' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-650 dark:bg-slate-800/60 dark:hover:bg-slate-800'
-              }`}>
-              Sub Services ({pendingSubs.length})
-            </button>
             <button onClick={() => setProposalsTab('workTypes')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                proposalsTab === 'workTypes' 
-                  ? 'bg-brand-navy text-white dark:bg-brand-green dark:text-slate-900 shadow-sm' 
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-650 dark:bg-slate-800/60 dark:hover:bg-slate-800'
-              }`}>
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-brand-navy text-white dark:bg-brand-green dark:text-slate-900 shadow-sm">
               Work Types ({pendingWorkTypes.length})
             </button>
           </div>
@@ -1839,52 +1817,6 @@ function ServicesManagementPage() {
                     <div key={i} className="skeleton h-12 rounded-xl" />
                   ))}
                 </div>
-              ) : proposalsTab === 'mains' ? (
-                /* Main Service Request Queue */
-                pendingMains.length === 0 ? (
-                  <EmptyState title="No pending Main Services" description="No vendors have proposed new main service brands." icon={<Building2 className="w-8 h-8 text-slate-400" />} />
-                ) : (
-                  <DataTable
-                    columns={[
-                      { key: 'name', label: 'Brand Name', sortable: true },
-                      { key: 'tagline', label: 'Tagline' },
-                      { key: 'description', label: 'Description' },
-                      { key: 'vendorName', label: 'Proposed By', sortable: true },
-                      {
-                        key: 'actions', label: 'Actions', render: (item: any) => (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="success" onClick={() => handleApproveMain(item.id)}>Approve</Button>
-                            <Button size="sm" variant="danger" onClick={() => handleRejectMain(item.id)}>Reject</Button>
-                          </div>
-                        )
-                      }
-                    ]}
-                    data={pendingMains}
-                  />
-                )
-              ) : proposalsTab === 'subs' ? (
-                /* Sub Service Request Queue */
-                pendingSubs.length === 0 ? (
-                  <EmptyState title="No pending Sub Services" description="No vendors have proposed new sub services." icon={<Wrench className="w-8 h-8 text-slate-400" />} />
-                ) : (
-                  <DataTable
-                    columns={[
-                      { key: 'name', label: 'Sub Service', sortable: true },
-                      { key: 'description', label: 'Description' },
-                      { key: 'serviceName', label: 'Parent Service', sortable: true },
-                      { key: 'vendorName', label: 'Proposed By', sortable: true },
-                      {
-                        key: 'actions', label: 'Actions', render: (item: any) => (
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="success" onClick={() => handleApproveSub(item.id)}>Approve</Button>
-                            <Button size="sm" variant="danger" onClick={() => handleRejectSub(item.id)}>Reject</Button>
-                          </div>
-                        )
-                      }
-                    ]}
-                    data={pendingSubs}
-                  />
-                )
               ) : (
                 /* Work Type Request Queue */
                 pendingWorkTypes.length === 0 ? (

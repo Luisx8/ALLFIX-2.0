@@ -11,7 +11,7 @@ import LampButton from '../components/shared/LampButton';
 
 interface FormData {
   firstName: string; lastName: string; username: string; email: string; password: string; confirmPassword: string;
-  phone: string; role: 'customer' | 'vendor';
+  phone: string; role: 'customer';
   // Address
   city: string; cityCode: string;
   barangay: string; barangayCode: string; unitHouseNo: string; street: string; postalCode: string;
@@ -33,7 +33,7 @@ interface SelectedService {
 
 const initialFormData: FormData = {
   firstName: '', lastName: '', username: '', email: '', password: '', confirmPassword: '',
-  phone: '', role: 'customer',
+  phone: '', role: 'customer' as const,
   city: '', cityCode: '',
   barangay: '', barangayCode: '', unitHouseNo: '', street: '', postalCode: '',
   companyName: '', contactPerson: '',
@@ -263,19 +263,7 @@ export default function RegisterPage() {
     if (step === 0) return form.firstName && form.lastName && form.username && usernameValid && form.email && form.password && form.password === form.confirmPassword && form.password.length >= 8 && /[A-Z]/.test(form.password) && /[0-9]/.test(form.password) && /[^A-Za-z0-9]/.test(form.password);
     if (step === 1) return form.cityCode && form.barangayCode && form.unitHouseNo && form.street;
     if (step === 2) {
-      const hasValidServices = selectedServices.length > 0 && selectedServices.every(s => {
-        const serviceDef = servicesCatalog.find(svc => svc.name === s.service);
-        if (!serviceDef) return false;
-        if (serviceDef.sub.length === 0) return true;
-        if (s.sub_services.length === 0) return false;
-        
-        return s.sub_services.every(subName => {
-          const subDef = serviceDef.sub.find((sub: any) => sub.name === subName);
-          if (!subDef || !subDef.workTypes || subDef.workTypes.length === 0) return true;
-          return (s.work_types || []).some((wt: any) => wt.subService === subName);
-        });
-      });
-      return form.phone && isPhoneValid(form.phone) && form.termsAccepted && (form.role === 'customer' || (form.companyName && hasValidServices));
+      return form.phone && isPhoneValid(form.phone) && form.termsAccepted;
     }
     return false;
   };
@@ -292,12 +280,6 @@ export default function RegisterPage() {
         city: form.city, region: 'National Capital Region',
         postal_code: form.postalCode,
       };
-
-      if (form.role === 'vendor') {
-        profile.company_name = form.companyName;
-        profile.services = selectedServices; // Array of {service, sub_services[]}
-        profile.contact_person = form.contactPerson || `${form.firstName} ${form.lastName}`;
-      }
 
       localStorage.setItem('pendingRegistration', JSON.stringify({ sentAt: Date.now(), profile }));
       navigate(ROUTES.verifyEmail);
@@ -335,7 +317,7 @@ export default function RegisterPage() {
             <Wrench className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-white mb-4">Create your account</h2>
-          <p className="text-white/70 max-w-sm">Join AllFix.ph as a customer or vendor and start managing property services today.</p>
+          <p className="text-white/70 max-w-sm">Join AllFix.ph and start managing your property services today.</p>
           {/* Step indicator */}
           <div className="mt-12 flex items-center justify-center gap-4">
             {steps.map((s, i) => (
@@ -461,132 +443,7 @@ export default function RegisterPage() {
                       <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="input-base pl-10" placeholder="09XX XXX XXXX" required /></div>
                     {form.phone && !isPhoneValid(form.phone) && <p className="text-xs text-brand-red mt-1">Phone must be exactly 11 digits</p>}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">I am a...</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(['customer', 'vendor'] as const).map(r => (
-                        <button key={r} type="button" onClick={() => update('role', r)}
-                          className={`p-4 rounded-xl border-2 transition-all text-left ${form.role === r ? 'border-brand-navy dark:border-brand-green bg-brand-navy/5 dark:bg-brand-green/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>
-                          <div className="flex items-center gap-3">
-                            {r === 'customer' ? <User className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}
-                            <div><p className="font-semibold text-sm capitalize text-slate-900 dark:text-white">{r}</p>
-                              <p className="text-xs text-slate-500">{r === 'customer' ? 'I need services' : 'I provide services'}</p></div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {form.role === 'vendor' && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 overflow-hidden">
-                      <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Name</label>
-                        <div className="relative"><Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input value={form.companyName} onChange={(e) => update('companyName', e.target.value)} className="input-base pl-10" placeholder="Your company name" /></div>
-                      </div>
-                      <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Services You Offer</label>
-                        <div className="max-h-96 overflow-y-scroll pr-2" style={{ overflowY: 'scroll', WebkitOverflowScrolling: 'touch' }}>
-                          <div className="space-y-2 overflow-visible">
-                          {loadingCatalog ? (
-                            <div className="space-y-2">
-                              {Array(3).fill(0).map((_, i) => (
-                                <div key={i} className="animate-pulse h-12 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                              ))}
-                            </div>
-                          ) : (
-                            servicesCatalog.map(service => {
-                              const isSelected = selectedServices.find(s => s.service === service.name);
-                              return (
-                                <div key={service.name} className="space-y-2 relative z-10">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleService(service.name)}
-                                    className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-                                      isSelected
-                                        ? 'border-brand-navy dark:border-brand-green bg-brand-navy/5 dark:bg-brand-green/10'
-                                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                                    }`}
-                                  >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="flex-1">
-                                        <p 
-                                          className="font-semibold text-sm text-slate-900 dark:text-white relative cursor-help inline-block"
-                                          onMouseMove={(e) => handleMouseMove(e, service.description)}
-                                          onMouseLeave={hideTooltip}
-                                        >
-                                          {service.name}
-                                        </p>
-                                      </div>
-                                      {isSelected && <Check className="w-4 h-4 text-brand-navy dark:text-brand-green flex-shrink-0 mt-1" />}
-                                    </div>
-                                  </button>
 
-                                  {isSelected && service.sub.length > 0 && (
-                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="ml-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3 overflow-visible relative z-0">
-                                      <p className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Sub-services & Work Types:</p>
-                                      <div className="space-y-3">
-                                        {service.sub.map((sub: any) => {
-                                          const isSubSelected = isSelected?.sub_services.includes(sub.name) || false;
-                                          const subWorkTypes = sub.workTypes || [];
-
-                                          return (
-                                            <div key={sub.name} className="space-y-1.5 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
-                                              <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                  type="checkbox"
-                                                  checked={isSubSelected}
-                                                  onChange={() => toggleSubService(service.name, sub.name)}
-                                                  className="w-3.5 h-3.5 rounded border-slate-300 text-brand-navy focus:ring-brand-navy"
-                                                />
-                                                <div className="flex-1 min-h-fit">
-                                                  <span 
-                                                    className="text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-help inline-block"
-                                                    onMouseMove={(e) => handleMouseMove(e, sub.description)}
-                                                    onMouseLeave={hideTooltip}
-                                                  >
-                                                    {sub.name}
-                                                  </span>
-                                                </div>
-                                              </label>
-
-                                              {isSubSelected && subWorkTypes.length > 0 && (
-                                                <div className="ml-5 mt-1 space-y-1">
-                                                  <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Select Work Types:</p>
-                                                  {subWorkTypes.map((wt: string) => {
-                                                    const isWtSelected = isSelected.work_types?.some((vwt: any) => vwt.name === wt && vwt.subService === sub.name);
-
-                                                    return (
-                                                      <label key={wt} className="flex items-center gap-2 cursor-pointer py-0.5">
-                                                        <input
-                                                          type="checkbox"
-                                                          checked={!!isWtSelected}
-                                                          onChange={() => toggleWorkType(service.name, sub.name, wt)}
-                                                          className="w-3 h-3 rounded border-slate-300 text-brand-green focus:ring-brand-green"
-                                                        />
-                                                        <span className="text-[11px] text-slate-600 dark:text-slate-450">{wt}</span>
-                                                      </label>
-                                                    );
-                                                  })}
-                                                </div>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </div>
-                              );
-                            })
-                          )}
-                          </div>
-                        </div>
-                        {selectedServices.length > 0 && (
-                          <div className="mt-3 p-2 rounded-lg bg-brand-green/10 border border-brand-green/20">
-                            <p className="text-xs font-medium text-brand-green">Selected: {selectedServices.map(s => `${s.service} (${s.sub_services.length})`).join(', ')}</p>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
                   <label className="flex items-start gap-3 cursor-pointer mt-4">
                     <input type="checkbox" checked={form.termsAccepted} onChange={(e) => update('termsAccepted', e.target.checked)} className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand-navy focus:ring-brand-navy" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">I agree to the <a href="#" className="text-brand-navy dark:text-brand-green font-medium hover:underline">Terms & Conditions</a> and <a href="#" className="text-brand-navy dark:text-brand-green font-medium hover:underline">Privacy Policy</a>.</span>
