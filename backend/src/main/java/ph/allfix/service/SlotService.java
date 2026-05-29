@@ -21,10 +21,31 @@ public class SlotService {
     }
 
     public void decrementSlot(String vendorId, String date) throws Exception {
-        decrementSlot(vendorId, date, null, null);
+        decrementSlot(vendorId, date, null, null, null);
     }
 
     public void decrementSlot(String vendorId, String date, String subService, String time) throws Exception {
+        decrementSlot(vendorId, date, subService, time, null);
+    }
+
+    public void decrementSlot(String vendorId, String date, String subService, String time, String slotId) throws Exception {
+        System.out.println("[SlotService] decrementSlot: vendorId=" + vendorId + ", date=" + date + ", subService=" + subService + ", time=" + time + ", slotId=" + slotId);
+        if (slotId != null && !slotId.isEmpty()) {
+            Map<String, Object> slot = firestoreService.getById("vendor_slots", slotId);
+            if (slot != null) {
+                int available = ((Number) slot.getOrDefault("available_slots", 0)).intValue();
+                if (available > 0) {
+                    firestoreService.increment("vendor_slots", slotId, "available_slots", -1);
+                    System.out.println("[SlotService] Successfully decremented slot using slotId=" + slotId);
+                } else {
+                    System.out.println("[SlotService] Slot with slotId=" + slotId + " has no available slots left (" + available + ")");
+                }
+                return;
+            } else {
+                System.out.println("[SlotService] Slot with slotId=" + slotId + " not found in Firestore. Falling back to query filters.");
+            }
+        }
+
         Map<String, Object> filters = new HashMap<>();
         filters.put("vendor_id", vendorId);
         filters.put("slot_date", date);
@@ -50,11 +71,14 @@ public class SlotService {
             if (targetSlot == null) {
                 targetSlot = slots.get(0);
             }
-            String slotId = (String) targetSlot.get("id");
+            String targetSlotId = (String) targetSlot.get("id");
             int available = ((Number) targetSlot.getOrDefault("available_slots", 0)).intValue();
             if (available > 0) {
-                firestoreService.increment("vendor_slots", slotId, "available_slots", -1);
+                firestoreService.increment("vendor_slots", targetSlotId, "available_slots", -1);
+                System.out.println("[SlotService] Successfully decremented fallback target slotId=" + targetSlotId);
             }
+        } else {
+            System.out.println("[SlotService] No vendor slots found matching vendorId=" + vendorId + ", date=" + date + ", subService=" + subService);
         }
     }
 
@@ -113,8 +137,10 @@ public class SlotService {
         
         List<String> vendorIds = new ArrayList<>();
         Map<String, Integer> vendorAvailableSlotsMap = new HashMap<>();
+        Map<String, String> vendorMatchedSlotIdMap = new HashMap<>();
         for (Map<String, Object> slot : slots) {
             System.out.println("[SlotService] CAVEMAN: RAW SLOT: " + slot);
+            String slotId = objectToString(slot.get("id"));
             
             // Check availability: use available_slots first, fallback to total_slots
             int available = 0;
@@ -190,13 +216,24 @@ public class SlotService {
                     activeBookingsCount = bookingsForSchedule.stream()
                             .filter(b -> {
                                 String status = objectToString(b.get("status"));
-                                return status != null && (
+                                boolean isActive = status != null && (
                                     "active".equalsIgnoreCase(status) ||
                                     "pending".equalsIgnoreCase(status) ||
                                     "confirmed".equalsIgnoreCase(status) ||
                                     "in_progress".equalsIgnoreCase(status) ||
                                     "in-progress".equalsIgnoreCase(status)
                                 );
+                                if (!isActive) return false;
+
+                                String bookingSlotId = objectToString(b.get("slot_id"));
+                                String bookingTime = objectToString(b.get("scheduled_time"));
+                                
+                                if (bookingSlotId != null && !bookingSlotId.isEmpty()) {
+                                    return bookingSlotId.equals(slotId);
+                                } else {
+                                    // Fallback: check if booking's scheduled time is within the slot's time range
+                                    return isTimeWithinRange(bookingTime, timeFrom, timeTo);
+                                }
                             })
                             .count();
                     System.out.println("[SlotService] CAVEMAN: Slot validation: vendor=" + slotVendorId + ", date=" + slotDate + ", subService=" + slotSubService + " -> activeBookings=" + activeBookingsCount + ", totalSlots=" + totalSlots + ", available=" + available);
@@ -218,6 +255,7 @@ public class SlotService {
                 String vId = (String) slot.get("vendor_id");
                 vendorIds.add(vId);
                 vendorAvailableSlotsMap.put(vId, effectiveAvailable);
+                vendorMatchedSlotIdMap.put(vId, slotId);
             }
         }
 
@@ -321,7 +359,9 @@ public class SlotService {
                     String vId = (String) newV.get("id");
                     int available = vendorAvailableSlotsMap.getOrDefault(vId, 0);
                     newV.put("available_slots", available);
-                    System.out.println("[SlotService] CAVEMAN: Vendor " + vId + " assigned available_slots=" + available);
+                    String matchedSlotId = vendorMatchedSlotIdMap.get(vId);
+                    newV.put("slot_id", matchedSlotId);
+                    System.out.println("[SlotService] CAVEMAN: Vendor " + vId + " assigned available_slots=" + available + ", slot_id=" + matchedSlotId);
                     return newV;
                 })
                 .toList();

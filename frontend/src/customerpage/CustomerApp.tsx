@@ -608,7 +608,8 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
       scheduledTime,
       quantity,
       price,
-      total: itemTotal
+      total: itemTotal,
+      slotId: selectedVendor?.slot_id || null
     };
 
     if (editingId) {
@@ -1369,7 +1370,8 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
           address: fullAddress,
           payment_method: paymentMethod,
           payment_reference: referenceNumber,
-          voucher_code: voucherCode || null
+          voucher_code: voucherCode || null,
+          slot_id: item.slotId || null
         };
 
         console.log("[CAVEMAN] Sending booking request to backend:", bookingData);

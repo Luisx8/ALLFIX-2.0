@@ -60,8 +60,9 @@ public class BookingService {
         String date = (String) booking.get("scheduled_date");
         String subService = (String) booking.get("sub_service");
         String time = (String) booking.get("scheduled_time");
+        String slotId = (String) booking.get("slot_id");
         if (vendorId != null && date != null) {
-            slotService.decrementSlot(vendorId, date, subService, time);
+            slotService.decrementSlot(vendorId, date, subService, time, slotId);
         }
 
         // Notify customer + vendor
