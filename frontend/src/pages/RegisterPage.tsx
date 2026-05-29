@@ -351,7 +351,7 @@ export default function RegisterPage() {
           </div>
 
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-            {step === 0 ? 'Basic Information' : step === 1 ? 'Your Address' : 'Contact & Role'}
+            {step === 0 ? 'Basic Information' : step === 1 ? 'Your Address' : 'Contact'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Step {step + 1} of {steps.length}</p>
 

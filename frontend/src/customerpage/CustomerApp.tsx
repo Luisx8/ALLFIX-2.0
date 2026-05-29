@@ -399,6 +399,7 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
 
   const [scheduleAvailableVendors, setScheduleAvailableVendors] = useState<any[]>([]);
   const [fetchingAvailableVendors, setFetchingAvailableVendors] = useState(false);
+  const [timeError, setTimeError] = useState('');
 
   // Edit / Status state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -452,32 +453,67 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
     ? activeSubService.workTypes
     : activeSubService ? [activeSubService.name] : [];
 
+  // Validate preferred start time is not in the past for today's date
+  useEffect(() => {
+    if (scheduledDate && scheduledTime) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+      if (scheduledDate === todayStr) {
+        const currentHour = now.getHours();
+        const currentMin = now.getMinutes();
+        const [selHour, selMin] = scheduledTime.split(':').map(Number);
+        if (selHour < currentHour || (selHour === currentHour && selMin <= currentMin)) {
+          setTimeError('This time has already passed today. Please select a future time.');
+          return;
+        }
+      }
+      setTimeError('');
+    } else {
+      setTimeError('');
+    }
+  }, [scheduledDate, scheduledTime]);
+
   // Fetch schedule-available vendors from database
   useEffect(() => {
-    if (serviceId && workType && scheduledDate && scheduledTime) {
+    console.log('[CAVEMAN] === VENDOR FETCH TRIGGER ===');
+    console.log('[CAVEMAN] serviceId:', serviceId, '| workType:', workType);
+    console.log('[CAVEMAN] scheduledDate:', scheduledDate, '| scheduledTime:', scheduledTime);
+    console.log('[CAVEMAN] timeError:', timeError, '| activeSubService:', activeSubService?.name);
+
+    if (serviceId && workType && scheduledDate && scheduledTime && !timeError) {
       setFetchingAvailableVendors(true);
       const activeSvc = services.find((s: any) => s.id === serviceId || s.name?.toLowerCase()?.replace(/\s+/g, '') === serviceId);
-      api.get('/api/slots/available-vendors-schedule', {
-        params: {
-          service_name: activeSvc?.name || '',
-          service_brand: activeSvc?.brand || '',
-          sub_service: activeSubService?.name || '',
-          work_type: workType,
-          date: scheduledDate,
-          time: scheduledTime
-        }
-      }).then(res => {
+      const params = {
+        service_name: activeSvc?.name || '',
+        service_brand: activeSvc?.brand || '',
+        sub_service: activeSubService?.name || '',
+        work_type: workType,
+        date: scheduledDate,
+        time: scheduledTime
+      };
+      console.log('[CAVEMAN] activeSvc:', activeSvc ? { id: activeSvc.id, name: activeSvc.name, brand: activeSvc.brand } : 'NOT FOUND');
+      console.log('[CAVEMAN] REQUEST PARAMS:', JSON.stringify(params));
+
+      api.get('/api/slots/available-vendors-schedule', { params })
+      .then(res => {
+        console.log('[CAVEMAN] RESPONSE:', res.status, JSON.stringify(res.data));
+        console.log('[CAVEMAN] VENDOR COUNT:', (res.data || []).length);
         setScheduleAvailableVendors(res.data || []);
       }).catch(err => {
-        console.error("Failed to fetch available vendors", err);
+        console.error('[CAVEMAN] FETCH ERROR:', err);
+        console.error('[CAVEMAN] Error response:', err.response?.data);
         setScheduleAvailableVendors([]);
       }).finally(() => {
         setFetchingAvailableVendors(false);
       });
     } else {
+      console.log('[CAVEMAN] SKIPPING fetch - missing fields or timeError');
       setScheduleAvailableVendors([]);
     }
-  }, [serviceId, workType, scheduledDate, scheduledTime, services, activeSubService?.name]);
+  }, [serviceId, workType, scheduledDate, scheduledTime, services, activeSubService?.name, timeError]);
 
   // Filter vendors by capability
   const availableVendors = vendors.filter((v: any) => {
@@ -810,7 +846,15 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
                             setScheduledDate(e.target.value);
                             setVendorId('');
                           }}
-                          min={new Date().toISOString().split('T')[0]}
+                          min={(() => {
+                            const now = new Date();
+                            const y = now.getFullYear();
+                            const m = String(now.getMonth() + 1).padStart(2, '0');
+                            const d = String(now.getDate()).padStart(2, '0');
+                            const formatted = `${y}-${m}-${d}`;
+                            console.log('[CAVEMAN] Date picker min date local =', formatted);
+                            return formatted;
+                          })()}
                           className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy"
                           required
                         />
@@ -820,24 +864,35 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Preferred Start Time</label>
                       <div className="relative">
-                        <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <Clock className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${timeError ? 'text-red-400' : 'text-slate-400'}`} />
                         <input
                           type="time"
                           value={scheduledTime}
                           onChange={(e) => {
                             setScheduledTime(e.target.value);
                             setVendorId('');
+                            setTimeError('');
                           }}
-                          className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                          className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border rounded-2xl text-sm focus:outline-none focus:ring-2 ${
+                            timeError
+                              ? 'border-red-400 dark:border-red-500 text-red-600 dark:text-red-400 focus:ring-red-400'
+                              : 'border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white focus:ring-brand-navy'
+                          }`}
                           required
                         />
                       </div>
+                      {timeError && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-red-500 text-xs font-semibold">
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{timeError}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {/* Vendor selection */}
-                {workType && scheduledDate && scheduledTime && (
+                {workType && scheduledDate && scheduledTime && !timeError && (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Preferred Partner / Vendor</label>
                     {fetchingAvailableVendors ? (

@@ -51,6 +51,19 @@ export function getFilteredVendorServices(vendorServices: any[], dbServices: any
     .filter(Boolean);
 }
 
+/**
+ * Safely formats a Date object to YYYY-MM-DD in the local timezone.
+ * Avoids any UTC / toISOString timezone shifting.
+ */
+function formatLocalYYYYMMDD(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const formatted = `${year}-${month}-${day}`;
+  console.log('[CAVEMAN] formatLocalYYYYMMDD: input dateObj =', date.toString(), '| output localDateString =', formatted);
+  return formatted;
+}
+
 function VendorHome() {
   const { profile } = useAuth();
   const [personnelCount, setPersonnelCount] = useState(0);
@@ -145,7 +158,7 @@ function SlotCalendar({ dbServices }: { dbServices: any[] }) {
   };
 
   const getSlotsForDate = (date: number) => {
-    const dateStr = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), date).toISOString().split('T')[0];
+    const dateStr = formatLocalYYYYMMDD(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), date));
     return slots.filter(s => s.slot_date === dateStr);
   };
 
@@ -189,7 +202,7 @@ function SlotCalendar({ dbServices }: { dbServices: any[] }) {
       }
     }
 
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = formatLocalYYYYMMDD(selectedDate);
     try {
       await api.post('/api/slots', {
         vendor_id: vendorProfile.id,

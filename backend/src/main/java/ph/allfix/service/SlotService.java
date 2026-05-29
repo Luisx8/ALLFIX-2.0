@@ -95,27 +95,58 @@ public class SlotService {
     }
 
     public List<Map<String, Object>> getAvailableVendorsForSchedule(String serviceName, String serviceBrand, String subService, String workType, String date, String time) throws Exception {
-        System.out.println("[SlotService] === getAvailableVendorsForSchedule === serviceName='" + serviceName + "', brand='" + serviceBrand + "', sub='" + subService + "', workType='" + workType + "', date='" + date + "', time='" + time + "'");
-        // Get all vendor slots for the date with available > 0
+        System.out.println("[SlotService] === getAvailableVendorsForSchedule ===");
+        System.out.println("[SlotService] PARAMS: serviceName='" + serviceName + "', brand='" + serviceBrand + "', sub='" + subService + "', workType='" + workType + "', date='" + date + "', time='" + time + "'");
+        
+        // Get all vendor slots for the date
         List<Map<String, Object>> slots = firestoreService.getWhere("vendor_slots", "slot_date", date);
         System.out.println("[SlotService] Found " + slots.size() + " slot(s) for date " + date);
+        
+        // CAVEMAN: Also get ALL slots to see what dates exist
+        if (slots.isEmpty()) {
+            List<Map<String, Object>> allSlots = firestoreService.getAll("vendor_slots");
+            System.out.println("[SlotService] CAVEMAN: Total slots in vendor_slots collection: " + allSlots.size());
+            for (Map<String, Object> s : allSlots) {
+                System.out.println("[SlotService] CAVEMAN:   ALL_SLOT: slot_date='" + s.get("slot_date") + "', vendor_id='" + s.get("vendor_id") + "', service_type='" + s.get("service_type") + "', sub_service='" + s.get("sub_service") + "', time_from='" + s.get("time_from") + "', time_to='" + s.get("time_to") + "', total_slots=" + s.get("total_slots") + ", available_slots=" + s.get("available_slots") + ", id='" + s.get("id") + "'");
+            }
+        }
+        
         List<String> vendorIds = new ArrayList<>();
         for (Map<String, Object> slot : slots) {
-            int available = ((Number) slot.getOrDefault("available_slots", 0)).intValue();
+            System.out.println("[SlotService] CAVEMAN: RAW SLOT: " + slot);
+            
+            // Check availability: use available_slots first, fallback to total_slots
+            int available = 0;
+            Object availObj = slot.get("available_slots");
+            Object totalObj = slot.get("total_slots");
+            System.out.println("[SlotService] CAVEMAN:   available_slots raw=" + availObj + " (type=" + (availObj == null ? "null" : availObj.getClass().getName()) + ")");
+            System.out.println("[SlotService] CAVEMAN:   total_slots raw=" + totalObj + " (type=" + (totalObj == null ? "null" : totalObj.getClass().getName()) + ")");
+            
+            if (availObj != null && availObj instanceof Number) {
+                available = ((Number) availObj).intValue();
+            } else if (totalObj != null && totalObj instanceof Number) {
+                // Fallback: if available_slots not set, use total_slots
+                available = ((Number) totalObj).intValue();
+                System.out.println("[SlotService] CAVEMAN:   FALLBACK: using total_slots=" + available + " since available_slots is missing");
+            }
+            System.out.println("[SlotService] CAVEMAN:   Effective available=" + available);
+            
             if (available <= 0) {
                 System.out.println("[SlotService]   SKIP slot (no available) vendor=" + slot.get("vendor_id"));
                 continue;
             }
             
             // Check that the slot matches the selected subservice and service category
-            String slotService = (String) slot.get("service_type");
-            String slotSubService = (String) slot.get("sub_service");
+            String slotService = objectToString(slot.get("service_type"));
+            String slotSubService = objectToString(slot.get("sub_service"));
+            System.out.println("[SlotService] CAVEMAN:   slotService='" + slotService + "', slotSubService='" + slotSubService + "'");
             
             boolean serviceMatches = false;
-            if (slotService != null) {
+            if (slotService != null && !slotService.isEmpty()) {
                 if (serviceName != null && slotService.equalsIgnoreCase(serviceName)) serviceMatches = true;
                 if (serviceBrand != null && slotService.equalsIgnoreCase(serviceBrand)) serviceMatches = true;
             }
+            System.out.println("[SlotService] CAVEMAN:   serviceMatches=" + serviceMatches + " (comparing slot='" + slotService + "' vs name='" + serviceName + "' / brand='" + serviceBrand + "')");
             
             boolean subServiceMatches = false;
             if (subService == null || subService.isEmpty() || "null".equalsIgnoreCase(subService)) {
@@ -123,40 +154,57 @@ public class SlotService {
             } else {
                 subServiceMatches = (slotSubService != null && slotSubService.equalsIgnoreCase(subService));
             }
+            System.out.println("[SlotService] CAVEMAN:   subServiceMatches=" + subServiceMatches + " (comparing slot='" + slotSubService + "' vs param='" + subService + "')");
             
             if (!serviceMatches || !subServiceMatches) {
-                System.out.println("[SlotService]   SKIP slot (service/sub mismatch) vendor=" + slot.get("vendor_id") + ", slotService='" + slotService + "', slotSub='" + slotSubService + "', serviceMatch=" + serviceMatches + ", subMatch=" + subServiceMatches);
+                System.out.println("[SlotService]   SKIP slot (service/sub mismatch) vendor=" + slot.get("vendor_id"));
                 continue;
             }
             
             // Check time range [time_from, time_to]
-            String timeFrom = (String) slot.get("time_from");
-            String timeTo = (String) slot.get("time_to");
+            String timeFrom = objectToString(slot.get("time_from"));
+            String timeTo = objectToString(slot.get("time_to"));
+            System.out.println("[SlotService] CAVEMAN:   time_from='" + timeFrom + "', time_to='" + timeTo + "', customer_time='" + time + "'");
             boolean inRange = isTimeWithinRange(time, timeFrom, timeTo);
-            System.out.println("[SlotService]   TIME CHECK vendor=" + slot.get("vendor_id") + " | customer='" + time + "' vs range=['" + timeFrom + "', '" + timeTo + "'] => " + (inRange ? "IN RANGE ✓" : "OUT OF RANGE ✗"));
+            System.out.println("[SlotService]   TIME CHECK vendor=" + slot.get("vendor_id") + " => " + (inRange ? "IN RANGE" : "OUT OF RANGE"));
             if (inRange) {
                 vendorIds.add((String) slot.get("vendor_id"));
             }
         }
 
         if (vendorIds.isEmpty()) {
+            System.out.println("[SlotService] No matching vendor slot IDs found, returning empty.");
             return Collections.emptyList();
         }
+        System.out.println("[SlotService] Matched vendorIds from slots: " + vendorIds);
 
-        // Get approved vendors
-        List<Map<String, Object>> approvedVendors = firestoreService.getWhereMultiple("vendors", Map.of(
-            "acc_approve", "approved",
-            "temp_delete", 0
-        ));
+        // Get approved vendors — use Long for temp_delete since Firestore stores numbers as Long
+        Map<String, Object> vendorFilters = new HashMap<>();
+        vendorFilters.put("acc_approve", "approved");
+        vendorFilters.put("temp_delete", 0L);
+        List<Map<String, Object>> approvedVendors = firestoreService.getWhereMultiple("vendors", vendorFilters);
+        System.out.println("[SlotService] Found " + approvedVendors.size() + " approved vendor(s) from DB");
+
+        // If the strict temp_delete=0L query returned nothing, also try with int 0 as fallback
+        if (approvedVendors.isEmpty()) {
+            Map<String, Object> fallbackFilters = new HashMap<>();
+            fallbackFilters.put("acc_approve", "approved");
+            fallbackFilters.put("temp_delete", 0);
+            approvedVendors = firestoreService.getWhereMultiple("vendors", fallbackFilters);
+            System.out.println("[SlotService] Fallback query (int 0) found " + approvedVendors.size() + " vendor(s)");
+        }
 
         // Filter vendors by vendorIds and whether they offer serviceName/serviceBrand and workType
-        return approvedVendors.stream()
+        List<Map<String, Object>> result = approvedVendors.stream()
                 .filter(v -> {
                     String vId = (String) v.get("id");
                     if (!vendorIds.contains(vId)) return false;
                     
                     Object servicesObj = v.get("services");
-                    if (!(servicesObj instanceof List)) return false;
+                    if (!(servicesObj instanceof List)) {
+                        System.out.println("[SlotService]   VENDOR " + vId + " has no services list");
+                        return false;
+                    }
                     List<?> servicesList = (List<?>) servicesObj;
                     for (Object sObj : servicesList) {
                         if (!(sObj instanceof Map)) continue;
@@ -178,12 +226,14 @@ public class SlotService {
                                         Object wtSub = wtMap.get("subService");
                                         if (wtName instanceof String && workType != null &&
                                             ((String) wtName).equalsIgnoreCase(workType) &&
-                                            "approved".equalsIgnoreCase((String) wtStatus)) {
+                                            "approved".equalsIgnoreCase(wtStatus instanceof String ? (String) wtStatus : String.valueOf(wtStatus))) {
                                             if (subService != null && !subService.isEmpty() && !"null".equalsIgnoreCase(subService)) {
                                                 if (wtSub instanceof String && ((String) wtSub).equalsIgnoreCase(subService)) {
+                                                    System.out.println("[SlotService]   VENDOR " + vId + " MATCHED (with sub-service)");
                                                     return true;
                                                 }
                                             } else {
+                                                System.out.println("[SlotService]   VENDOR " + vId + " MATCHED (no sub filter)");
                                                 return true;
                                             }
                                         }
@@ -192,30 +242,53 @@ public class SlotService {
                             }
                         }
                     }
+                    System.out.println("[SlotService]   VENDOR " + vId + " REJECTED (service/workType mismatch in profile)");
                     return false;
                 })
                 .toList();
+        System.out.println("[SlotService] Final result: " + result.size() + " vendor(s)");
+        return result;
+    }
+
+    /**
+     * Safely convert any Firestore value to a String.
+     * Handles nulls, Strings, and other object types.
+     */
+    private String objectToString(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof String) return (String) obj;
+        return String.valueOf(obj);
     }
 
     private boolean isTimeWithinRange(String timeStr, String fromStr, String toStr) {
-        if (timeStr == null || timeStr.isBlank() || fromStr == null || fromStr.isBlank() || toStr == null || toStr.isBlank()) return false;
+        if (timeStr == null || timeStr.isBlank() || fromStr == null || fromStr.isBlank() || toStr == null || toStr.isBlank()) {
+            System.err.println("[SlotService] isTimeWithinRange SKIPPED — null/blank input: time='" + timeStr + "', from='" + fromStr + "', to='" + toStr + "'");
+            return false;
+        }
         try {
             int timeMinutes = toMinutesSinceMidnight(timeStr);
             int fromMinutes = toMinutesSinceMidnight(fromStr);
             int toMinutes = toMinutesSinceMidnight(toStr);
+            System.out.println("[SlotService]   PARSED MINUTES: customer=" + timeMinutes + " (" + timeStr + "), from=" + fromMinutes + " (" + fromStr + "), to=" + toMinutes + " (" + toStr + ")");
+            // Customer time must be within the vendor's available slot range (inclusive)
             return timeMinutes >= fromMinutes && timeMinutes <= toMinutes;
         } catch (Exception e) {
             System.err.println("[SlotService] isTimeWithinRange FAILED — time: '" + timeStr + "', from: '" + fromStr + "', to: '" + toStr + "' — " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
 
     /**
      * Convert any common time string to minutes since midnight.
-     * Handles: "HH:mm", "HH:mm:ss", "h:mm AM/PM", "hh:mm AM/PM", "HH:mm AM/PM" (invalid but tolerated).
+     * Handles: "HH:mm", "HH:mm:ss", "h:mm AM/PM", "hh:mm AM/PM", "HH:mm AM/PM" (invalid but tolerated),
+     * and potential whitespace/special characters from URL encoding.
      */
     private int toMinutesSinceMidnight(String raw) {
         String timeStr = raw.trim();
+
+        // Remove any non-printable or special unicode whitespace characters
+        timeStr = timeStr.replaceAll("[^\\dAPMapm: ]", "").trim();
 
         // Normalize whitespace and case
         timeStr = timeStr.replaceAll("\\s+", " ").trim().toUpperCase();
@@ -228,7 +301,7 @@ public class SlotService {
 
         // Split by colon — expected: [hour, minute] or [hour, minute, second]
         String[] parts = timeStr.split(":");
-        if (parts.length < 2) throw new IllegalArgumentException("Cannot parse time: " + raw);
+        if (parts.length < 2) throw new IllegalArgumentException("Cannot parse time: '" + raw + "' (cleaned: '" + timeStr + "')");
 
         int hour = Integer.parseInt(parts[0].trim());
         int minute = Integer.parseInt(parts[1].trim());
