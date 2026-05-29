@@ -382,6 +382,7 @@ interface BookingFormTabProps {
 function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const subserviceParam = searchParams.get('subservice') || '';
+  const editParam = searchParams.get('edit') || '';
   const navigate = useNavigate();
   const { profile } = useAuth();
 
@@ -397,6 +398,7 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [description, setDescription] = useState('');
 
   const [scheduleAvailableVendors, setScheduleAvailableVendors] = useState<any[]>([]);
   const [fetchingAvailableVendors, setFetchingAvailableVendors] = useState(false);
@@ -422,8 +424,32 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
     });
   }, []);
 
+  // Pre-fill selection based on query params or dynamic changes (editing existing cart item)
+  useEffect(() => {
+    if (editParam && cart.length > 0 && services.length > 0) {
+      const itemToEdit = cart.find(item => item.id === editParam);
+      if (itemToEdit) {
+        console.log('[CAVEMAN] Loading edit item from URL parameter:', itemToEdit);
+        setEditingId(itemToEdit.id);
+        setServiceId(itemToEdit.serviceId);
+        setSubServiceId(itemToEdit.subServiceId);
+        setWorkType(itemToEdit.workType);
+        setDescription(itemToEdit.description || '');
+        setVendorId(itemToEdit.vendorId);
+        setScheduledDate(itemToEdit.scheduledDate);
+        setScheduledTime(itemToEdit.scheduledTime);
+        setQuantity(itemToEdit.quantity);
+        
+        // Clear search params so reloading doesn't reset changes and user can edit freely
+        setSearchParams({});
+      }
+    }
+  }, [editParam, cart, services, setSearchParams]);
+
   // Pre-fill selection based on query params or dynamic changes
   useEffect(() => {
+    if (editParam) return;
+
     if (services.length > 0 && subserviceParam && !editingId) {
       const matchedSvc = services.find((s: any) =>
         s.subServices?.some((sub: any) => sub.name?.toLowerCase() === subserviceParam.toLowerCase())
@@ -442,7 +468,7 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
         }
       }
     }
-  }, [services, subserviceParam, editingId]);
+  }, [services, subserviceParam, editingId, editParam]);
 
   // Find active selections
   const activeServiceCategory = services.find((s: any) => s.id === serviceId || s.name?.toLowerCase()?.replace(/\s+/g, '') === serviceId);
@@ -602,6 +628,7 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
       subServiceId,
       subServiceName: activeSubService?.name || subServiceId,
       workType,
+      description,
       vendorId,
       vendorName: selectedVendor?.company_name || selectedVendor?.name || selectedVendor?.username || 'Vendor',
       scheduledDate,
@@ -626,6 +653,7 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
       setWorkType('');
       setVendorId('');
     }
+    setDescription('');
     setScheduledDate('');
     setScheduledTime('');
     setQuantity(1);
@@ -636,6 +664,7 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
     setServiceId(item.serviceId);
     setSubServiceId(item.subServiceId);
     setWorkType(item.workType);
+    setDescription(item.description || '');
     setVendorId(item.vendorId);
     setScheduledDate(item.scheduledDate);
     setScheduledTime(item.scheduledTime);
@@ -652,6 +681,7 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
       setServiceId('');
       setSubServiceId('');
       setWorkType('');
+      setDescription('');
       setVendorId('');
       setScheduledDate('');
       setScheduledTime('');
@@ -840,6 +870,23 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
                   </div>
                 )}
 
+                {/* Description Field (Optional) */}
+                {workType && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Description</label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => {
+                        console.log(`[CAVEMAN] Description updated: ${e.target.value}`);
+                        setDescription(e.target.value);
+                      }}
+                      placeholder="Enter additional details about the work or service request (optional)"
+                      rows={3}
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy resize-none"
+                    />
+                  </div>
+                )}
+
                 {/* Booking details section (Date & Time) */}
                 {workType && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -913,19 +960,41 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
                         <span>No available vendors for the selected schedule.</span>
                       </div>
                     ) : (
-                      <select
-                        value={vendorId}
-                        onChange={(e) => setVendorId(e.target.value)}
-                        className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                        required
-                      >
-                        <option value="">Select a service provider...</option>
-                        {selectableVendors.map((v: any) => (
-                          <option key={v.id} value={v.id}>
-                            {v.company_name || v.name || v.username}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectableVendors.map((v: any) => {
+                          const isSelected = vendorId === v.id;
+                          return (
+                            <div
+                              key={v.id}
+                              onClick={() => {
+                                console.log(`[CAVEMAN] Vendor selected: ID=${v.id}, Name=${v.company_name || v.name || v.username}, City=${v.city || 'N/A'}`);
+                                setVendorId(v.id);
+                              }}
+                              className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left ${
+                                isSelected
+                                  ? 'border-brand-navy bg-brand-navy/5 dark:bg-brand-navy/20'
+                                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-800'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="space-y-1">
+                                  <p className={`font-bold text-sm leading-tight ${isSelected ? 'text-brand-navy dark:text-blue-400 font-extrabold' : 'text-slate-900 dark:text-white'}`}>
+                                    {v.company_name || v.name || v.username}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {v.city || 'Location not specified'}
+                                  </p>
+                                </div>
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                  isSelected ? 'border-brand-navy bg-brand-navy' : 'border-slate-300 dark:border-slate-600'
+                                }`}>
+                                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 )}
@@ -999,6 +1068,11 @@ function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
                           <div>
                             <p className="font-extrabold text-sm text-slate-950 dark:text-white">{item.workType}</p>
                             <p className="text-xs text-slate-400 font-medium mb-2">{item.serviceName} • {item.subServiceName}</p>
+                            {item.description && (
+                              <p className="text-xs text-slate-600 dark:text-slate-350 bg-slate-50 dark:bg-slate-805 p-2 rounded-xl mb-2 italic border border-slate-100 dark:border-slate-800/80">
+                                "{item.description}"
+                              </p>
+                            )}
                             <p className="text-xs text-slate-500 font-bold bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg inline-block">{item.vendorName}</p>
                             <div className="flex gap-2 text-[10px] text-slate-400 mt-2 font-semibold">
                               <span>📅 {item.scheduledDate}</span>
@@ -1196,6 +1270,11 @@ function CartTab({ cart, setCart, onCheckout }: CartTabProps) {
               <div>
                 <p className="font-extrabold text-base text-slate-950 dark:text-white">{item.workType}</p>
                 <p className="text-xs text-slate-400 font-semibold mb-2">{item.serviceName} • {item.subServiceName}</p>
+                {item.description && (
+                  <p className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-xl mb-2 italic border border-slate-100 dark:border-slate-800/80 max-w-md">
+                    "{item.description}"
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                   <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{item.vendorName}</span>
                   <span>📅 {item.scheduledDate}</span>
@@ -1209,7 +1288,7 @@ function CartTab({ cart, setCart, onCheckout }: CartTabProps) {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => { navigate(`/customer/book?subservice=${encodeURIComponent(item.subServiceName)}`); }}
+                    onClick={() => { navigate(`/customer/book?edit=${item.id}&subservice=${encodeURIComponent(item.subServiceName)}`); }}
                     className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-orange-500 hover:border-orange-200 dark:hover:border-orange-900 transition-colors bg-white dark:bg-slate-800 shadow-sm"
                     title="Edit Item details"
                   >
@@ -1362,6 +1441,7 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
           vendor_name: item.vendorName,
           service_type: item.workType || item.subServiceName,
           sub_service: item.subServiceName,
+          description: item.description || null,
           scheduled_date: item.scheduledDate,
           scheduled_time: item.scheduledTime,
           price: item.price,
@@ -1474,6 +1554,11 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
                     <div className="min-w-0 flex-grow">
                       <p className="font-black text-xs md:text-sm text-slate-950 dark:text-white truncate">{item.workType}</p>
                       <p className="text-[11px] md:text-xs text-slate-455 dark:text-slate-500 font-semibold truncate mt-0.5">{item.subServiceName}</p>
+                      {item.description && (
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate mt-0.5">
+                          "{item.description}"
+                        </p>
+                      )}
                       <p className="text-[11px] md:text-xs text-slate-400 font-medium truncate mt-0.5">Provider: {item.vendorName}</p>
                       <div className="flex gap-2 text-[10px] text-slate-400 mt-1.5 font-semibold">
                         <span>📅 {item.scheduledDate}</span>
