@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ClipboardList, Wrench, Calendar, MessageSquare, Search, Star, Plus, Minus, Trash2, Edit, ShoppingBag, ArrowRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { ClipboardList, Wrench, Calendar, MessageSquare, Search, Star, Plus, Minus, Trash2, Edit, ShoppingBag, ArrowRight, AlertCircle, CheckCircle2, Clock, MapPin, CreditCard, ArrowLeft, User, ShieldAlert } from 'lucide-react';
 import { Sidebar } from '../components/shared/Sidebar';
 import { Header } from '../components/shared/Header';
 import { Card, StatCard } from '../components/shared/Card';
@@ -376,9 +376,10 @@ function CustomerHome() {
 interface BookingFormTabProps {
   cart: any[];
   setCart: React.Dispatch<React.SetStateAction<any[]>>;
+  onCheckout: (items: any[], onSuccess: (bookings: any[]) => void) => void;
 }
 
-function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
+function BookingFormTab({ cart, setCart, onCheckout }: BookingFormTabProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const subserviceParam = searchParams.get('subservice') || '';
   const navigate = useNavigate();
@@ -515,6 +516,24 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
     }
   }, [serviceId, workType, scheduledDate, scheduledTime, services, activeSubService?.name, timeError]);
 
+  // [CAVEMAN] Derived list: only vendors with available_slots > 0 are displayed and selectable
+  const selectableVendors = scheduleAvailableVendors.filter((v: any) => {
+    const isSelectable = v.available_slots === undefined || v.available_slots > 0;
+    console.log(`[CAVEMAN] Vendor ${v.company_name || v.name || v.username} remaining slots: ${v.available_slots} -> Displayable/Selectable: ${isSelectable}`);
+    return isSelectable;
+  });
+
+  // [CAVEMAN] Automatically deselect vendor if they have 0 slots remaining (are not in selectable list)
+  useEffect(() => {
+    if (vendorId && scheduleAvailableVendors.length > 0) {
+      const isSelectable = selectableVendors.some(v => v.id === vendorId);
+      if (!isSelectable) {
+        console.log(`[CAVEMAN] Auto-resetting vendorId because selected vendor is no longer selectable`);
+        setVendorId('');
+      }
+    }
+  }, [scheduleAvailableVendors, vendorId]);
+
   // Filter vendors by capability
   const availableVendors = vendors.filter((v: any) => {
     if (!activeServiceCategory || !workType) return false;
@@ -560,7 +579,22 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
       }
     }
 
-    const selectedVendor = scheduleAvailableVendors.find(v => v.id === vendorId) || vendors.find(v => v.id === vendorId);
+    const selectedVendor = selectableVendors.find(v => v.id === vendorId) || vendors.find(v => v.id === vendorId);
+    
+    // [CAVEMAN] Prevent booking if selected vendor is not selectable
+    const isVendorSelectable = selectableVendors.some(v => v.id === vendorId);
+    if (!isVendorSelectable) {
+      console.log(`[CAVEMAN] Booking blocked: selected vendor ${vendorId} is not in selectableVendors list.`);
+      alert("The selected vendor is not available for the chosen schedule.");
+      return;
+    }
+
+    if (selectedVendor && selectedVendor.available_slots !== undefined && selectedVendor.available_slots <= 0) {
+      console.log(`[CAVEMAN] Booking blocked: ${selectedVendor.company_name || selectedVendor.name} has available_slots = ${selectedVendor.available_slots}`);
+      alert("The selected vendor has no remaining available slots.");
+      return;
+    }
+
     const cartItem = {
       id: editingId || Math.random().toString(36).substring(2, 9),
       serviceId,
@@ -625,7 +659,7 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
   };
 
   // Submit all bookings in cart
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (cart.length === 0) return;
 
     // Validate preferred start time if date is today
@@ -647,37 +681,10 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
       }
     }
 
-    setCheckoutLoading(true);
-    try {
-      const bookingsCreated = [];
-      for (const item of cart) {
-        const bookingData = {
-          customer_id: profile?.id || 'guest',
-          customer_name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Customer',
-          vendor_id: item.vendorId,
-          vendor_name: item.vendorName,
-          service_type: item.workType || item.subServiceName,
-          sub_service: item.subServiceName,
-          scheduled_date: item.scheduledDate,
-          scheduled_time: item.scheduledTime,
-          price: item.price,
-          quantity: item.quantity,
-          total_price: item.total
-        };
-        const res = await api.post('/api/bookings', bookingData);
-        bookingsCreated.push({
-          id: res.data?.id,
-          ...bookingData
-        });
-      }
+    onCheckout(cart, (bookingsCreated: any[]) => {
       setSuccessBookings(bookingsCreated);
       setCart([]); // Clear cart on success
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || 'Failed to submit booking. Please try again.');
-    } finally {
-      setCheckoutLoading(false);
-    }
+    });
   };
 
   if (successBookings) {
@@ -899,7 +906,7 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
                       <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-500 text-sm animate-pulse">
                         Checking vendor availability...
                       </div>
-                    ) : scheduleAvailableVendors.length === 0 ? (
+                    ) : selectableVendors.length === 0 ? (
                       <div className="p-4 bg-red-500/5 border border-red-500/10 text-red-500 rounded-2xl text-sm flex gap-2 items-center">
                         <AlertCircle className="w-4 h-4 flex-shrink-0" />
                         <span>No available vendors for the selected schedule.</span>
@@ -912,7 +919,7 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
                         required
                       >
                         <option value="">Select a service provider...</option>
-                        {scheduleAvailableVendors.map((v: any) => (
+                        {selectableVendors.map((v: any) => (
                           <option key={v.id} value={v.id}>
                             {v.company_name || v.name || v.username}
                           </option>
@@ -923,7 +930,7 @@ function BookingFormTab({ cart, setCart }: BookingFormTabProps) {
                 )}
 
                 {/* Booking details confirmation (Quantity & Price) */}
-                {vendorId && scheduleAvailableVendors.length > 0 && (
+                {vendorId && selectableVendors.length > 0 && (
                   <>
                     <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/80">
                       <div>
@@ -1082,19 +1089,19 @@ function ChatTab() {
 interface CartTabProps {
   cart: any[];
   setCart: React.Dispatch<React.SetStateAction<any[]>>;
+  onCheckout: (items: any[], onSuccess: (bookings: any[]) => void) => void;
 }
 
-function CartTab({ cart, setCart }: CartTabProps) {
+function CartTab({ cart, setCart, onCheckout }: CartTabProps) {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [successBookings, setSuccessBookings] = useState<any[] | null>(null);
 
   const handleRemoveCartItem = (itemId: string) => {
     setCart(prev => prev.filter(item => item.id !== itemId));
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (cart.length === 0) return;
 
     // Validate preferred start time if date is today
@@ -1116,37 +1123,10 @@ function CartTab({ cart, setCart }: CartTabProps) {
       }
     }
 
-    setCheckoutLoading(true);
-    try {
-      const bookingsCreated = [];
-      for (const item of cart) {
-        const bookingData = {
-          customer_id: profile?.id || 'guest',
-          customer_name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Customer',
-          vendor_id: item.vendorId,
-          vendor_name: item.vendorName,
-          service_type: item.workType || item.subServiceName,
-          sub_service: item.subServiceName,
-          scheduled_date: item.scheduledDate,
-          scheduled_time: item.scheduledTime,
-          price: item.price,
-          quantity: item.quantity,
-          total_price: item.total
-        };
-        const res = await api.post('/api/bookings', bookingData);
-        bookingsCreated.push({
-          id: res.data?.id,
-          ...bookingData
-        });
-      }
+    onCheckout(cart, (bookingsCreated: any[]) => {
       setSuccessBookings(bookingsCreated);
       setCart([]); // Clear cart on success
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || 'Failed to submit booking. Please try again.');
-    } finally {
-      setCheckoutLoading(false);
-    }
+    });
   };
 
   if (successBookings) {
@@ -1261,7 +1241,7 @@ function CartTab({ cart, setCart }: CartTabProps) {
           </Button>
           <Button
             onClick={handleCheckout}
-            loading={checkoutLoading}
+            loading={false}
             variant="success"
             className="flex-1 py-3.5 text-sm font-extrabold rounded-2xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.01] transition-transform"
           >
@@ -1297,6 +1277,535 @@ function ProfileTab() {
   );
 }
 
+interface CheckoutModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  cart: any[];
+  onSuccess: (bookings: any[]) => void;
+}
+
+function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps) {
+  const { profile } = useAuth();
+  const [step, setStep] = useState(2); // Step 1 is cart, checkout modal starts at step 2 (Address)
+  const [loading, setLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false); // Mobile-friendly accordion!
+
+  // Address Form States
+  const [unitNo, setUnitNo] = useState('');
+  const [street, setStreet] = useState('');
+  const [barangay, setBarangay] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+
+  // Payment Selection States
+  const [paymentMethod, setPaymentMethod] = useState<'GCash' | 'Dragon Pay'>('GCash');
+
+  // Payment Details Form States
+  const [referenceNumber, setReferenceNumber] = useState('');
+  const [voucherCode, setVoucherCode] = useState('');
+
+  // Calculate Cart Subtotals
+  const totalAmount = cart.reduce((sum, item) => sum + item.total, 0);
+
+  // Prefill Address from Profile if available
+  useEffect(() => {
+    if (isOpen && profile) {
+      console.log("[CAVEMAN] Prefilling address from profile:", profile);
+      setCity((profile as any).city || '');
+      setBarangay((profile as any).barangay || '');
+      if ((profile as any).street) setStreet((profile as any).street);
+    }
+  }, [isOpen, profile]);
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step === 2) {
+      if (!street.trim() || !barangay.trim() || !city.trim() || !postalCode.trim()) {
+        alert("Please complete all required address fields.");
+        return;
+      }
+      console.log(`[CAVEMAN] Address Step complete. Data:`, { unitNo, street, barangay, city, postalCode });
+      setStep(3);
+    }
+  };
+
+  const handlePaymentMethodNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log(`[CAVEMAN] Payment selection complete: ${paymentMethod}`);
+    setStep(4);
+  };
+
+  const handleDetailsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!referenceNumber.trim()) {
+      alert("Please provide the reference number to complete your transaction.");
+      return;
+    }
+    console.log(`[CAVEMAN] Step 4 Payment Details complete. Reference: ${referenceNumber}, Voucher: ${voucherCode}`);
+    setShowConfirmation(true);
+  };
+
+  const handleFinalizeBooking = async () => {
+    console.log("[CAVEMAN] Finalizing checkout. Creating bookings...");
+    setLoading(true);
+    try {
+      const fullAddress = `${unitNo ? unitNo + ' ' : ''}${street}, Brgy. ${barangay}, ${city}, ${postalCode}`.trim();
+      const bookingsCreated = [];
+
+      for (const item of cart) {
+        const bookingData = {
+          customer_id: profile?.id || 'guest',
+          customer_name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Customer',
+          vendor_id: item.vendorId,
+          vendor_name: item.vendorName,
+          service_type: item.workType || item.subServiceName,
+          sub_service: item.subServiceName,
+          scheduled_date: item.scheduledDate,
+          scheduled_time: item.scheduledTime,
+          price: item.price,
+          quantity: item.quantity,
+          total_price: item.total,
+          address: fullAddress,
+          payment_method: paymentMethod,
+          payment_reference: referenceNumber,
+          voucher_code: voucherCode || null
+        };
+
+        console.log("[CAVEMAN] Sending booking request to backend:", bookingData);
+        const res = await api.post('/api/bookings', bookingData);
+        bookingsCreated.push({
+          id: res.data?.id,
+          ...bookingData
+        });
+      }
+
+      console.log(`[CAVEMAN] Booking creation successful! Total bookings created: ${bookingsCreated.length}`);
+      onSuccess(bookingsCreated);
+      onClose();
+    } catch (err: any) {
+      console.error('[CAVEMAN] Failed to finalize bookings:', err);
+      alert(err.response?.data?.message || 'Failed to submit booking. Please try again.');
+    } finally {
+      setLoading(false);
+      setShowConfirmation(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal Box */}
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl w-full max-w-6xl max-h-[96vh] sm:max-h-[90vh] overflow-y-auto z-10 flex flex-col pt-3 sm:pt-4 md:pt-5 pb-4 sm:pb-6 md:pb-8 px-4 sm:px-6 md:px-8"
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">Complete Booking</h3>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 font-bold">Multi-step Booking Checkout</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-base"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Steps indicator */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2.5 sm:gap-4 py-4 sm:py-5 border-b border-slate-100 dark:border-slate-800/80 mb-5 text-[10px] sm:text-xs md:text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="w-6 h-6 sm:w-7 h-7 rounded-full bg-brand-green/20 text-brand-green font-bold flex items-center justify-center text-xs">✓</span>
+            <span className="font-extrabold text-slate-400">Cart</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-700 text-xs hidden sm:inline">➔</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-6 h-6 sm:w-7 h-7 rounded-full font-bold flex items-center justify-center text-xs ${step >= 2 ? 'bg-brand-navy text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>2</span>
+            <span className={`font-extrabold ${step >= 2 ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400'}`}>Address</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-700 text-xs hidden sm:inline">➔</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-6 h-6 sm:w-7 h-7 rounded-full font-bold flex items-center justify-center text-xs ${step >= 3 ? 'bg-brand-navy text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>3</span>
+            <span className={`font-extrabold ${step >= 3 ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400'}`}>Payment</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-700 text-xs hidden sm:inline">➔</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-6 h-6 sm:w-7 h-7 rounded-full font-bold flex items-center justify-center text-xs ${step >= 4 ? 'bg-brand-navy text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>4</span>
+            <span className={`font-extrabold ${step >= 4 ? 'text-slate-800 dark:text-slate-200' : 'text-slate-400'}`}>Details</span>
+          </div>
+        </div>
+
+        {/* 2-Column Split Rectangular Body */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch flex-grow min-h-0">
+          {/* Left Column: Order Summary (1/3 scale, compact & collapsible on mobile) */}
+          <div className="lg:col-span-4 bg-slate-50 dark:bg-slate-800/30 p-4 sm:p-5 rounded-2xl border border-slate-150 dark:border-slate-800/80 flex flex-col justify-between h-auto lg:h-full transition-all duration-300">
+            <div>
+              {/* Mobile Collapsible Header */}
+              <div
+                onClick={() => setSummaryExpanded(!summaryExpanded)}
+                className="lg:hidden flex justify-between items-center bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 cursor-pointer shadow-sm"
+              >
+                <span className="text-xs font-black text-slate-850 dark:text-slate-200 flex items-center gap-1.5">
+                  📋 Show Booking Summary ({cart.length})
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-extrabold text-brand-green">₱{totalAmount}</span>
+                  <span className="text-slate-455 text-[10px] transition-transform duration-300">{summaryExpanded ? '▲' : '▼'}</span>
+                </div>
+              </div>
+
+              {/* Desktop Header */}
+              <h4 className="hidden lg:block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3.5">Booking Summary</h4>
+              
+              {/* Item List (Collapsible on Mobile, always visible on Desktop) */}
+              <div className={`${summaryExpanded ? 'block' : 'hidden lg:block'} mt-3 lg:mt-0 space-y-3 max-h-[160px] lg:max-h-[320px] overflow-y-auto pr-1`}>
+                {cart.map((item, idx) => (
+                  <div key={idx} className="p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl flex justify-between gap-3 shadow-sm">
+                    <div className="min-w-0 flex-grow">
+                      <p className="font-black text-xs md:text-sm text-slate-950 dark:text-white truncate">{item.workType}</p>
+                      <p className="text-[11px] md:text-xs text-slate-455 dark:text-slate-500 font-semibold truncate mt-0.5">{item.subServiceName}</p>
+                      <p className="text-[11px] md:text-xs text-slate-400 font-medium truncate mt-0.5">Provider: {item.vendorName}</p>
+                      <div className="flex gap-2 text-[10px] text-slate-400 mt-1.5 font-semibold">
+                        <span>📅 {item.scheduledDate}</span>
+                        <span>•</span>
+                        <span>⏰ {item.scheduledTime}</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 flex flex-col justify-between">
+                      <p className="font-black text-xs md:text-sm text-brand-green">₱{item.total}</p>
+                      <p className="text-[10px] text-slate-400 font-bold mt-0.5">Qty: {item.quantity}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Section (Visible on Desktop) */}
+            <div className="hidden lg:block pt-4 mt-4 border-t border-slate-200 dark:border-slate-700/80">
+              <div className="flex justify-between items-center">
+                <span className="text-xs md:text-sm font-bold text-slate-455 uppercase tracking-widest">Total Amount</span>
+                <span className="text-xl font-black text-brand-green">₱{totalAmount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Step Wizard Forms (2/3 scale) */}
+          <div className="lg:col-span-8 flex flex-col justify-between min-h-[360px] lg:min-h-[400px]">
+            {/* Step 2 Address Wizard Form */}
+            {step === 2 && (
+              <form onSubmit={handleNextStep} className="flex flex-col justify-between h-full">
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="flex items-center gap-2.5 mb-1 sm:mb-2">
+                    <MapPin className="w-5 h-5 text-brand-navy" />
+                    <h4 className="font-black text-base md:text-lg text-slate-900 dark:text-white">Step 2: Service Location</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Unit / House No. / Building (Optional)</label>
+                      <input
+                        type="text"
+                        value={unitNo}
+                        onChange={(e) => setUnitNo(e.target.value)}
+                        placeholder="House No., Apt, Floor, etc."
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Street Address *</label>
+                      <input
+                        type="text"
+                        value={street}
+                        onChange={(e) => setStreet(e.target.value)}
+                        placeholder="Street name & number"
+                        required
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Barangay *</label>
+                      <input
+                        type="text"
+                        value={barangay}
+                        onChange={(e) => setBarangay(e.target.value)}
+                        placeholder="Barangay / District"
+                        required
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">City / Municipality *</label>
+                      <input
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="City"
+                        required
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Postal Code / ZIP *</label>
+                      <input
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="e.g. 1000"
+                        required
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2 Navigation Buttons */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex justify-end gap-3 sm:gap-4 mt-4">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="py-2.5 sm:py-3 px-5 sm:px-6 text-xs sm:text-sm font-extrabold rounded-2xl bg-brand-navy hover:bg-[#0a2d5c] text-white shadow-lg flex items-center gap-1.5 transition-transform hover:scale-[1.01]"
+                  >
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 3 Wizard Form */}
+            {step === 3 && (
+              <form onSubmit={handlePaymentMethodNext} className="flex flex-col justify-between h-full">
+                <div className="space-y-3.5 sm:space-y-4">
+                  <div className="flex items-center gap-2.5 mb-1">
+                    <CreditCard className="w-5 h-5 text-brand-navy" />
+                    <h4 className="font-black text-base md:text-lg text-slate-900 dark:text-white">Step 3: Payment Method</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 sm:gap-6 items-center">
+                    {/* Left Column: payment method options (3/4 size) */}
+                    <div className="sm:col-span-5 space-y-2.5 sm:space-y-3.5">
+                      <p className="text-xs font-extrabold text-slate-455 uppercase tracking-widest">Select Gateway</p>
+                      
+                      <div
+                        onClick={() => {
+                          console.log("[CAVEMAN] Payment method switched to GCash");
+                          setPaymentMethod('GCash');
+                        }}
+                        className={`w-full sm:w-3/4 p-2 sm:p-2.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                          paymentMethod === 'GCash'
+                            ? 'border-brand-navy bg-brand-navy/5 dark:bg-brand-navy/20 text-brand-navy dark:text-blue-400 font-bold border-2'
+                            : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-350 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <img src="/images/sample-gcash-qr.png" className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-md shadow-sm border border-slate-100 flex-shrink-0" alt="GCash Logo" />
+                        <span className="text-xs sm:text-sm font-extrabold">GCash</span>
+                      </div>
+
+                      <div
+                        onClick={() => {
+                          console.log("[CAVEMAN] Payment method switched to Dragon Pay");
+                          setPaymentMethod('Dragon Pay');
+                        }}
+                        className={`w-full sm:w-3/4 p-2 sm:p-2.5 rounded-xl border cursor-pointer transition-all flex items-center gap-3 ${
+                          paymentMethod === 'Dragon Pay'
+                            ? 'border-brand-navy bg-brand-navy/5 dark:bg-brand-navy/20 text-brand-navy dark:text-blue-400 font-bold border-2'
+                            : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-350 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <img src="/images/sample-qr-dragonpay.png" className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-md shadow-sm border border-slate-100 flex-shrink-0" alt="Dragon Pay Logo" />
+                        <span className="text-xs sm:text-sm font-extrabold">Dragon Pay</span>
+                      </div>
+                    </div>
+
+                    {/* Right Column: QR Display Box (Sized proportionally for viewports) */}
+                    <div className="sm:col-span-7 bg-slate-50 dark:bg-slate-800/40 p-3.5 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex flex-col items-center gap-2.5 text-center">
+                      <p className="text-[10px] sm:text-xs font-bold text-slate-455 uppercase tracking-widest">Scan QR Code to Pay</p>
+                      <div className="bg-white p-2.5 rounded-2xl shadow-sm border border-slate-100">
+                        <img
+                          src={paymentMethod === 'GCash' ? '/images/sample-gcash-qr.png' : '/images/sample-qr-dragonpay.png'}
+                          alt={`${paymentMethod} QR Code`}
+                          className="w-32 h-32 xs:w-40 xs:h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 object-contain transition-all"
+                        />
+                      </div>
+                      <p className="text-[10px] sm:text-xs text-slate-500 leading-normal font-semibold">
+                        Scan code with your {paymentMethod} app.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Cancellation Warning Notice */}
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-xl p-2.5 flex items-start gap-2 text-amber-800 dark:text-amber-300">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                    <p className="text-[10px] sm:text-xs font-semibold leading-normal text-left">
+                      “Once the booking status is confirmed, any cancellation refund will be subject to a deduction fee.”
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 Navigation Buttons */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex justify-between gap-3 sm:gap-4 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log("[CAVEMAN] Back to Step 2");
+                      setStep(2);
+                    }}
+                    className="py-2.5 sm:py-3 px-4 sm:px-5 text-xs sm:text-sm font-bold border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="py-2.5 sm:py-3 px-5 sm:px-6 text-xs sm:text-sm font-extrabold rounded-2xl bg-brand-navy hover:bg-[#0a2d5c] text-white shadow-lg flex items-center gap-1.5 transition-transform hover:scale-[1.01]"
+                  >
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 4 Details Form */}
+            {step === 4 && (
+              <form onSubmit={handleDetailsSubmit} className="flex flex-col justify-between h-full">
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="flex items-center gap-2.5 mb-1 sm:mb-2">
+                    <User className="w-5 h-5 text-brand-navy" />
+                    <h4 className="font-black text-base md:text-lg text-slate-900 dark:text-white">Step 4: Reference & Summary</h4>
+                  </div>
+
+                  <div className="space-y-3.5 sm:space-y-4">
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Amount Paid (PHP)</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-455 text-xs sm:text-sm font-black">₱</span>
+                        <input
+                          type="text"
+                          value={totalAmount}
+                          disabled
+                          placeholder="Amount Paid (PHP)"
+                          className="w-full pl-9 pr-4 py-2.5 sm:py-3 bg-slate-55 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm font-black focus:outline-none cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Reference Number</label>
+                      <input
+                        type="text"
+                        value={referenceNumber}
+                        onChange={(e) => setReferenceNumber(e.target.value)}
+                        placeholder="Reference Number"
+                        required
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Voucher Code (Optional)</label>
+                      <input
+                        type="text"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value)}
+                        placeholder="Voucher Code (Optional)"
+                        className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cancellation Warning Notice */}
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-xl p-2.5 flex items-start gap-2 text-amber-800 dark:text-amber-300">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                    <p className="text-[10px] sm:text-xs font-semibold leading-normal text-left">
+                      “Once the booking status is confirmed, any cancellation refund will be subject to a deduction fee.”
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 4 Navigation Buttons */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex justify-between gap-3 sm:gap-4 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log("[CAVEMAN] Back to Step 3");
+                      setStep(3);
+                    }}
+                    className="py-2.5 sm:py-3 px-4 sm:px-5 text-xs sm:text-sm font-bold border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                  <Button
+                    type="submit"
+                    variant="success"
+                    className="py-2.5 sm:py-3 px-6 sm:px-7 text-xs sm:text-sm font-extrabold rounded-2xl shadow-lg transition-transform hover:scale-[1.01]"
+                  >
+                    Book Now
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* Booking Confirmation Sub-Modal Overlay */}
+        {showConfirmation && (
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-5 sm:p-6 max-w-sm w-full text-center space-y-4 animate-in fade-in zoom-in-95 duration-150"
+            >
+              <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Confirm Booking</h4>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed text-center">
+                “Once the booking status is confirmed, any cancellation refund will be subject to a deduction fee.”
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log("[CAVEMAN] User cancelled the booking confirmation sub-modal.");
+                    setShowConfirmation(false);
+                  }}
+                  className="flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFinalizeBooking}
+                  disabled={loading}
+                  className="flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-extrabold rounded-2xl bg-brand-navy hover:bg-[#0a2d5c] text-white shadow-lg shadow-brand-navy/20 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Processing...' : 'Proceed'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 // ─── Main Layout ────────────────────────────────────────────────────────────
 export default function CustomerApp() {
   const [collapsed, setCollapsed] = useState(false);
@@ -1313,6 +1822,17 @@ export default function CustomerApp() {
     localStorage.setItem('booking_cart', JSON.stringify(cart));
   }, [cart]);
 
+  // Checkout modal states
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkoutCart, setCheckoutCart] = useState<any[]>([]);
+  const [onCheckoutSuccess, setOnCheckoutSuccess] = useState<((bookings: any[]) => void) | null>(null);
+
+  const triggerCheckout = (items: any[], onSuccess: (bookings: any[]) => void) => {
+    setCheckoutCart(items);
+    setOnCheckoutSuccess(() => onSuccess);
+    setCheckoutModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-surface-light dark:bg-surface-dark">
       <Sidebar role="customer" collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
@@ -1321,14 +1841,25 @@ export default function CustomerApp() {
         <main className="p-6">
           <Routes>
             <Route index element={<CustomerHome />} />
-            <Route path="book" element={<BookingFormTab cart={cart} setCart={setCart} />} />
+            <Route path="book" element={<BookingFormTab cart={cart} setCart={setCart} onCheckout={triggerCheckout} />} />
             <Route path="bookings" element={<MyBookingsTab />} />
-            <Route path="cart" element={<CartTab cart={cart} setCart={setCart} />} />
+            <Route path="cart" element={<CartTab cart={cart} setCart={setCart} onCheckout={triggerCheckout} />} />
             <Route path="chat" element={<ChatTab />} />
             <Route path="profile" element={<ProfileTab />} />
           </Routes>
         </main>
       </div>
+
+      <CheckoutModal
+        isOpen={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        cart={checkoutCart}
+        onSuccess={(bookings) => {
+          if (onCheckoutSuccess) {
+            onCheckoutSuccess(bookings);
+          }
+        }}
+      />
     </div>
   );
 }

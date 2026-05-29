@@ -16,7 +16,7 @@ import PersonnelDashboard from './personnelpage/PersonnelDashboard';
 import AboutUsPage from './footerlinks/AboutUsPage';
 import PrivacyPage from './footerlinks/PrivacyPage';
 import TermsOfUse from './footerlinks/TermsOfUse';
-import ServicesPages from './pages/ServicesPages';
+import ServicesPages from './pages/Servicespages';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
 

@@ -112,6 +112,7 @@ public class SlotService {
         }
         
         List<String> vendorIds = new ArrayList<>();
+        Map<String, Integer> vendorAvailableSlotsMap = new HashMap<>();
         for (Map<String, Object> slot : slots) {
             System.out.println("[SlotService] CAVEMAN: RAW SLOT: " + slot);
             
@@ -168,7 +169,55 @@ public class SlotService {
             boolean inRange = isTimeWithinRange(time, timeFrom, timeTo);
             System.out.println("[SlotService]   TIME CHECK vendor=" + slot.get("vendor_id") + " => " + (inRange ? "IN RANGE" : "OUT OF RANGE"));
             if (inRange) {
-                vendorIds.add((String) slot.get("vendor_id"));
+                String slotVendorId = objectToString(slot.get("vendor_id"));
+                String slotDate = objectToString(slot.get("slot_date"));
+                
+                int totalSlots = 0;
+                if (totalObj != null && totalObj instanceof Number) {
+                    totalSlots = ((Number) totalObj).intValue();
+                } else {
+                    totalSlots = available;
+                }
+                
+                long activeBookingsCount = 0;
+                try {
+                    Map<String, Object> bookingFilters = new HashMap<>();
+                    bookingFilters.put("vendor_id", slotVendorId);
+                    bookingFilters.put("scheduled_date", slotDate);
+                    bookingFilters.put("sub_service", slotSubService);
+                    List<Map<String, Object>> bookingsForSchedule = firestoreService.getWhereMultiple("bookings", bookingFilters);
+                    
+                    activeBookingsCount = bookingsForSchedule.stream()
+                            .filter(b -> {
+                                String status = objectToString(b.get("status"));
+                                return status != null && (
+                                    "active".equalsIgnoreCase(status) ||
+                                    "pending".equalsIgnoreCase(status) ||
+                                    "confirmed".equalsIgnoreCase(status) ||
+                                    "in_progress".equalsIgnoreCase(status) ||
+                                    "in-progress".equalsIgnoreCase(status)
+                                );
+                            })
+                            .count();
+                    System.out.println("[SlotService] CAVEMAN: Slot validation: vendor=" + slotVendorId + ", date=" + slotDate + ", subService=" + slotSubService + " -> activeBookings=" + activeBookingsCount + ", totalSlots=" + totalSlots + ", available=" + available);
+                } catch (Exception e) {
+                    System.err.println("[SlotService] CAVEMAN ERROR checking bookings count for slot: " + e.getMessage());
+                }
+                
+                if (activeBookingsCount >= totalSlots) {
+                    System.out.println("[SlotService] CAVEMAN:   SKIP slot (fully booked/occupied: bookings=" + activeBookingsCount + " >= total_slots=" + totalSlots + ") vendor=" + slotVendorId);
+                    continue;
+                }
+                
+                int effectiveAvailable = Math.min(available, totalSlots - (int) activeBookingsCount);
+                if (effectiveAvailable <= 0) {
+                    System.out.println("[SlotService] CAVEMAN:   SKIP slot (effective available <= 0) vendor=" + slotVendorId);
+                    continue;
+                }
+                
+                String vId = (String) slot.get("vendor_id");
+                vendorIds.add(vId);
+                vendorAvailableSlotsMap.put(vId, effectiveAvailable);
             }
         }
 
@@ -199,6 +248,28 @@ public class SlotService {
                 .filter(v -> {
                     String vId = (String) v.get("id");
                     if (!vendorIds.contains(vId)) return false;
+
+                    // [CAVEMAN] Check vendor_slots availability limit
+                    try {
+                        Object vendorSlotsObj = v.get("vendor_slots");
+                        if (vendorSlotsObj != null) {
+                            int vendorSlots = ((Number) vendorSlotsObj).intValue();
+                            List<Map<String, Object>> bookings = firestoreService.getWhere("bookings", "vendor_id", vId);
+                            long activeBookingsCount = bookings.stream()
+                                    .filter(b -> {
+                                        String status = (String) b.get("status");
+                                        return status != null && ("confirmed".equalsIgnoreCase(status) || "in_progress".equalsIgnoreCase(status));
+                                    })
+                                    .count();
+                            System.out.println("[SlotService] CAVEMAN: Vendor " + vId + " (" + v.get("company_name") + ") activeBookingsCount: " + activeBookingsCount + " / vendor_slots: " + vendorSlots);
+                            if (activeBookingsCount >= vendorSlots) {
+                                System.out.println("[SlotService] CAVEMAN: Vendor " + vId + " (" + v.get("company_name") + ") is fully occupied. EXCLUDING from selectable list.");
+                                return false;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[SlotService] CAVEMAN ERROR checking vendor_slots/bookings for vendor " + vId + ": " + e.getMessage());
+                    }
                     
                     Object servicesObj = v.get("services");
                     if (!(servicesObj instanceof List)) {
@@ -244,6 +315,14 @@ public class SlotService {
                     }
                     System.out.println("[SlotService]   VENDOR " + vId + " REJECTED (service/workType mismatch in profile)");
                     return false;
+                })
+                .map(v -> {
+                    Map<String, Object> newV = new HashMap<>(v);
+                    String vId = (String) newV.get("id");
+                    int available = vendorAvailableSlotsMap.getOrDefault(vId, 0);
+                    newV.put("available_slots", available);
+                    System.out.println("[SlotService] CAVEMAN: Vendor " + vId + " assigned available_slots=" + available);
+                    return newV;
                 })
                 .toList();
         System.out.println("[SlotService] Final result: " + result.size() + " vendor(s)");
