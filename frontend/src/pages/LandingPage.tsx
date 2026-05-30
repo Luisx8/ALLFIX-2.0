@@ -297,7 +297,7 @@ const LandingPage = () => {
   };
 
   useEffect(() => {
-    console.log("[CAVEMAN] LandingPage home section loaded with new transparent illustration and dark-blue button styles!");
+    console.log("[CAVEMAN] LandingPage hero section optimized with increased font sizes, reduced margins, tightened spacing, and preserved illustration size!");
   }, []);
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -429,46 +429,47 @@ const LandingPage = () => {
         <Navbar isLandingPage />
 
         {/* ===================== HERO SECTION ===================== */}
-        <Box sx={{ position: 'relative', pt: { xs: 10, sm: 12, lg: 16 }, pb: { xs: 6, sm: 8, lg: 10 }, minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', backgroundImage: "linear-gradient(135deg, #06101E 0%, #0B1E36 100%)" }}>
+        <Box sx={{ position: 'relative', pt: { xs: 8, sm: 9, lg: 11 }, pb: { xs: 4, sm: 5, lg: 6 }, minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', backgroundImage: "linear-gradient(135deg, #06101E 0%, #0B1E36 100%)" }}>
           <Box sx={{ position: 'absolute', inset: 0, opacity: 0.04, backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")", backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0 }} />
           <Box sx={{ position: 'absolute', top: 80, left: 40, width: 288, height: 288, background: 'radial-gradient(circle, rgba(96, 165, 250, 0.4) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(96px)', opacity: 0.4, pointerEvents: 'none', zIndex: 0 }} />
           <Box sx={{ position: 'absolute', bottom: 80, right: 40, width: 288, height: 288, background: 'radial-gradient(circle, rgba(37, 99, 235, 0.4) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(96px)', opacity: 0.4, pointerEvents: 'none', zIndex: 0 }} />
+          <Box sx={{ position: 'absolute', top: '15%', right: '-10%', width: { xs: 300, sm: 450, lg: 550 }, height: { xs: 300, sm: 450, lg: 550 }, background: 'radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(120px)', opacity: 0.9, pointerEvents: 'none', zIndex: 1 }} />
 
           <Box sx={{ width: '100%', position: 'relative', zIndex: 10, px: { xs: 2, sm: 4, md: 5 } }}>
             <Grid container spacing={4} sx={{ width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Grid size={{ xs: 12, lg: 7 }} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: { xs: 'center', lg: 'flex-start' }, gap: 3, textAlign: { xs: 'center', lg: 'left' }, pl: { xs: 0, lg: 8, xl: 16 } }}>
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8, backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '9999px', px: 2, py: 0.7, mb: 0.5, backdropFilter: 'blur(10px)', width: 'fit-content' }}>
-                  <Box sx={{ width: 6, height: 6, bgcolor: '#4ade80', borderRadius: '50%' }} />
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'white' }}>
+              <Grid size={{ xs: 12, lg: 7 }} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: { xs: 'center', lg: 'flex-start' }, gap: { xs: 2.2, sm: 2.5, lg: 3 }, textAlign: { xs: 'center', lg: 'left' }, pl: { xs: 0, lg: 4, xl: 8 } }}>
+                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.0, backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '9999px', px: 2.5, py: 0.8, mb: 0, backdropFilter: 'blur(10px)', width: 'fit-content' }}>
+                  <Box sx={{ width: 8, height: 8, bgcolor: '#4ade80', borderRadius: '50%' }} />
+                  <Typography sx={{ fontSize: { xs: '0.85rem', sm: '0.95rem', lg: '1.05rem' }, fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'white' }}>
                     Manila's #1 Home Services Platform
                   </Typography>
                 </Box>
-                <Typography sx={{ fontSize: { xs: '2.5rem', sm: '3.2rem', lg: '3.8rem', xl: '4.5rem' }, fontWeight: 900, color: 'white', mb: 1, lineHeight: 1.1 }}>
+                <Typography sx={{ fontSize: { xs: '2.8rem', sm: '3.6rem', lg: '4.4rem', xl: '5.2rem' }, fontWeight: 900, color: 'white', mb: 0.5, lineHeight: 1.15 }}>
                   Hassle-Free <br /> Property Care, <br /> Done Right.
                 </Typography>
-                <Typography sx={{ fontSize: { xs: '1rem', sm: '1.1rem', lg: '1.2rem' }, color: 'rgba(191, 219, 254, 1)', mb: 4, lineHeight: 1.6, maxWidth: { xs: '90%', sm: '100%', lg: '580px' } }}>
+                <Typography sx={{ fontSize: { xs: '1.15rem', sm: '1.25rem', lg: '1.35rem' }, color: 'rgba(191, 219, 254, 1)', mb: 2.5, lineHeight: 1.6, maxWidth: { xs: '90%', sm: '100%', lg: '620px' } }}>
                   From aircon cleaning to plumbing, repairs to IT support — AllFix connects you with trusted, verified professionals across Metro Manila.
                 </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'row', gap: { xs: 1.5, sm: 3, lg: 5 }, flexWrap: 'wrap' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, lg: 2 } }}>
-                    <CheckCircleIcon sx={{ width: { xs: 20, sm: 28, lg: 36 }, height: { xs: 20, sm: 28, lg: 36 }, color: '#4ade80', flexShrink: 0 }} />
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: { xs: 2, sm: 3, lg: 4 }, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.2, lg: 2 } }}>
+                    <CheckCircleIcon sx={{ width: { xs: 24, sm: 32, lg: 40 }, height: { xs: 24, sm: 32, lg: 40 }, color: '#4ade80', flexShrink: 0 }} />
                     <Box sx={{ textAlign: 'left' }}>
-                      <Typography sx={{ color: 'white', fontWeight: 900, fontSize: { xs: '0.85rem', sm: '1.2rem', lg: '1.5rem' } }}>5,000+</Typography>
-                      <Typography sx={{ color: 'rgba(191, 219, 254, 1)', fontSize: { xs: '0.65rem', sm: '0.9rem', lg: '1.1rem' } }}>Verified Pros</Typography>
+                      <Typography sx={{ color: 'white', fontWeight: 900, fontSize: { xs: '0.95rem', sm: '1.35rem', lg: '1.65rem' } }}>5,000+</Typography>
+                      <Typography sx={{ color: 'rgba(191, 219, 254, 1)', fontSize: { xs: '0.75rem', sm: '1.0rem', lg: '1.2rem' } }}>Verified Pros</Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, lg: 2 } }}>
-                    <StarIcon sx={{ width: { xs: 20, sm: 28, lg: 36 }, height: { xs: 20, sm: 28, lg: 36 }, color: '#facc15', flexShrink: 0, fill: '#facc15' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.2, lg: 2 } }}>
+                    <StarIcon sx={{ width: { xs: 24, sm: 32, lg: 40 }, height: { xs: 24, sm: 32, lg: 40 }, color: '#facc15', flexShrink: 0, fill: '#facc15' }} />
                     <Box sx={{ textAlign: 'left' }}>
-                      <Typography sx={{ color: 'white', fontWeight: 900, fontSize: { xs: '0.85rem', sm: '1.2rem', lg: '1.5rem' } }}>4.9★</Typography>
-                      <Typography sx={{ color: 'rgba(191, 219, 254, 1)', fontSize: { xs: '0.65rem', sm: '0.9rem', lg: '1.1rem' } }}>Average Rating</Typography>
+                      <Typography sx={{ color: 'white', fontWeight: 900, fontSize: { xs: '0.95rem', sm: '1.35rem', lg: '1.65rem' } }}>4.9★</Typography>
+                      <Typography sx={{ color: 'rgba(191, 219, 254, 1)', fontSize: { xs: '0.75rem', sm: '1.0rem', lg: '1.2rem' } }}>Average Rating</Typography>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, lg: 2 } }}>
-                    <ShieldIcon sx={{ width: { xs: 20, sm: 28, lg: 36 }, height: { xs: 20, sm: 28, lg: 36 }, color: '#60a5fa', flexShrink: 0 }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.2, lg: 2 } }}>
+                    <ShieldIcon sx={{ width: { xs: 24, sm: 32, lg: 40 }, height: { xs: 24, sm: 32, lg: 40 }, color: '#60a5fa', flexShrink: 0 }} />
                     <Box sx={{ textAlign: 'left' }}>
-                      <Typography sx={{ color: 'white', fontWeight: 900, fontSize: { xs: '0.85rem', sm: '1.2rem', lg: '1.5rem' } }}>Insured &</Typography>
-                      <Typography sx={{ color: 'rgba(191, 219, 254, 1)', fontSize: { xs: '0.65rem', sm: '0.9rem', lg: '1.1rem' } }}>Accredited</Typography>
+                      <Typography sx={{ color: 'white', fontWeight: 900, fontSize: { xs: '0.95rem', sm: '1.35rem', lg: '1.65rem' } }}>Insured &</Typography>
+                      <Typography sx={{ color: 'rgba(191, 219, 254, 1)', fontSize: { xs: '0.75rem', sm: '1.0rem', lg: '1.2rem' } }}>Accredited</Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -478,7 +479,7 @@ const LandingPage = () => {
                 <Box
                   sx={{
                     width: '100%',
-                    maxWidth: { xs: '100%', sm: '480px', lg: '540px', xl: '600px' },
+                    maxWidth: { xs: '100%', sm: '520px', lg: '580px', xl: '640px' },
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -509,7 +510,7 @@ const LandingPage = () => {
                       color: '#FFFFFF',
                       border: '2px solid #FFFFFF',
                       fontWeight: 900,
-                      fontSize: '1.15rem',
+                      fontSize: '1.25rem',
                       py: 1.6,
                       px: 4,
                       borderRadius: '50px',
@@ -696,7 +697,7 @@ const LandingPage = () => {
               {/* LEFT: Image */}
               <Box sx={{ width: { xs: '90%', sm: '100%', lg: '42%' }, position: 'relative', ml: { xs: 3, lg: 4 } }}>
                 <Box sx={{ position: 'relative', width: '100%', height: { xs: 320, sm: 480, lg: 440, xl: 480 }, borderRadius: { xs: '80px 24px 24px 0px', lg: '100px 32px 32px 0px' }, backgroundColor: '#eaf2fc', overflow: 'hidden', display: 'flex', justifyContent: 'flex-end', boxShadow: '0 20px 40px rgba(16,53,95,0.08)' }}>
-                  <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80" alt="AllFix Professional at Work" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src="https://images.unsplash.com/photo-1686178827149-6d55c72d81df?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="AllFix Professional at Work" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </Box>
                 <Box sx={{ position: 'absolute', bottom: { xs: -20, lg: -30 }, left: { xs: -20, lg: -30 }, width: { xs: 60, lg: 85 }, height: { xs: 60, lg: 85 }, zIndex: 2 }}>
                   <Box sx={{ position: 'absolute', top: '35%', left: 0, width: '100%', height: '30%', backgroundColor: '#10355f', borderRadius: '6px' }} />

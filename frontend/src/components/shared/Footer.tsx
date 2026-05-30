@@ -1,21 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Container, Grid, Typography, IconButton } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import { servicesData } from '../../constants/servicesData';
+import api from '../../services/apiService';
+
+const svgIconMapping: Record<string, React.ReactNode> = {
+  coolfix: <path d="M19.5 12h-15M17.5 16h-11M21.5 8h-15" strokeWidth="2" strokeLinecap="round" />,
+  sanifix: <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  homefix: <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 9.36l-7.1 7.1a1 1 0 01-1.42 0l-1.4-1.4a1 1 0 010-1.42l7.1-7.1a6 6 0 019.36-7.94l-3.77 3.77z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  movefix: <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  greenfix: <path d="M11 20A7 7 0 019.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10zM11 20v-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  healthfix: <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  spacefix: <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+  techfix: <><rect x="4" y="4" width="16" height="16" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>
+};
+
+const defaultSvgIcon = <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />;
 
 export const Footer: React.FC = () => {
   const navigate = useNavigate();
+  const [services, setServices] = useState<any[]>(servicesData);
 
-  const footerPills = [
-    { name: 'CoolFix', icon: <path d="M19.5 12h-15M17.5 16h-11M21.5 8h-15" strokeWidth="2" strokeLinecap="round" /> },
-    { name: 'SaniFix', icon: <path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
-    { name: 'HomeFix', icon: <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 9.36l-7.1 7.1a1 1 0 01-1.42 0l-1.4-1.4a1 1 0 010-1.42l7.1-7.1a6 6 0 019.36-7.94l-3.77 3.77z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
-    { name: 'MoveFix', icon: <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
-    { name: 'GreenFix', icon: <path d="M11 20A7 7 0 019.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10zM11 20v-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
-    { name: 'HealthFix', icon: <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
-    { name: 'SpaceFix', icon: <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> },
-    { name: 'TechFix', icon: <><rect x="4" y="4" width="16" height="16" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></> },
-  ];
+  useEffect(() => {
+    api.get('/api/services')
+      .then(res => {
+        const backendServices = res.data;
+        const merged: any[] = [];
+
+        backendServices.forEach((bs: any) => {
+          const id = bs.id || bs.name.toLowerCase().replace(/\s+/g, '');
+          const frontendMatch = servicesData.find(
+            s => s.id.toLowerCase() === id.toLowerCase() || s.brand.toLowerCase() === bs.name.toLowerCase()
+          );
+          
+          merged.push({
+            id,
+            brand: bs.name,
+            tagline: bs.tagline || frontendMatch?.tagline || 'Specialized Services',
+            description: bs.description,
+            image: bs.imageUrl || bs.image || frontendMatch?.image || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80',
+            accent: frontendMatch?.accent || '#2E5BA8',
+            accentDark: frontendMatch?.accentDark || '#10355f',
+            headerBg: frontendMatch?.headerBg || '#10355f',
+            headerBgLight: frontendMatch?.headerBgLight || '#2E5BA8',
+            pillText: frontendMatch?.pillText || '#2E5BA8',
+          });
+        });
+
+        // Add remaining frontend services
+        servicesData.forEach((fs) => {
+          if (!merged.find(m => m.id.toLowerCase() === fs.id.toLowerCase())) {
+            merged.push({
+              id: fs.id,
+              brand: fs.brand,
+              tagline: fs.tagline,
+              description: fs.description,
+              image: fs.image,
+              accent: fs.accent,
+              accentDark: fs.accentDark,
+              headerBg: fs.headerBg,
+              headerBgLight: fs.headerBgLight,
+              pillText: fs.pillText,
+            });
+          }
+        });
+
+        setServices(merged);
+        console.log("[CAVEMAN] Footer dynamic services successfully fetched and synchronized with DB:", merged.map(m => m.brand));
+      })
+      .catch(err => {
+        console.error("[CAVEMAN] Failed to load services in Footer, falling back to static servicesData:", err);
+        setServices(servicesData);
+      });
+  }, []);
 
   return (
     <Box component="footer" sx={{ width: '100%', background: 'linear-gradient(135deg, #10355f 0%, #0d264a 55%, #1a3f70 100%)', pt: { xs: 8, lg: 10 }, pb: { xs: 4, lg: 6 }, color: 'white' }}>
@@ -34,29 +92,32 @@ export const Footer: React.FC = () => {
               The Philippines' most trusted property care platform. Connecting homes and offices with verified professionals since 2021.
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5, mb: 4, width: '100%', maxWidth: '400px' }}>
-              {footerPills.map(pill => (
-                <Box 
-                  key={pill.name} 
-                  onClick={() => { navigate(`/services`); window.scrollTo(0, 0); }} 
-                  sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: 1, 
-                    border: '1px solid rgba(255,255,255,0.15)', 
-                    borderRadius: '8px', 
-                    px: 1, 
-                    py: 0.8, 
-                    cursor: 'pointer', 
-                    transition: 'all 0.2s', 
-                    backgroundColor: 'rgba(255,255,255,0.02)', 
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } 
-                  }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">{pill.icon}</svg>
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'white', whiteSpace: 'nowrap', textAlign: 'center' }}>{pill.name}</Typography>
-                </Box>
-              ))}
+              {services.map(svc => {
+                const iconContent = svgIconMapping[svc.id.toLowerCase()] || defaultSvgIcon;
+                return (
+                  <Box 
+                    key={svc.id} 
+                    onClick={() => { navigate(`/services/${svc.id}`); window.scrollTo(0, 0); }} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      gap: 1, 
+                      border: '1px solid rgba(255,255,255,0.15)', 
+                      borderRadius: '8px', 
+                      px: 1, 
+                      py: 0.8, 
+                      cursor: 'pointer', 
+                      transition: 'all 0.2s', 
+                      backgroundColor: 'rgba(255,255,255,0.02)', 
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } 
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor">{iconContent}</svg>
+                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'white', whiteSpace: 'nowrap', textAlign: 'center' }}>{svc.brand}</Typography>
+                  </Box>
+                );
+              })}
             </Box>
           </Grid>
 
