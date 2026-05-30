@@ -1131,7 +1131,7 @@ function PlaceholderPage({ title, description, icon }: { title: string; descript
 }
 
 function CalendarPage() { return <PlaceholderPage title="Calendar" description="View and manage schedules, appointments, and important dates." icon={<ClipboardList className="w-8 h-8" />} />; }
-function ChatHistoryPage() { return <PlaceholderPage title="Chat History" description="Review all chat conversations between customers, vendors, and personnel." icon={<Users className="w-8 h-8" />} />; }
+
 function ReviewsPage() { return <PlaceholderPage title="Reviews" description="Monitor and manage customer reviews and ratings." icon={<TrendingUp className="w-8 h-8" />} />; }
 function VendorsManagementPage() { return <PlaceholderPage title="Vendors Management" description="Manage vendor partnerships, contracts, and performance." icon={<Building2 className="w-8 h-8" />} />; }
 function AdminServiceCard({ service, onServiceClick, onEditClick }: { service: any; onServiceClick: (svc: any) => void; onEditClick: (svc: any) => void }) {
@@ -1922,7 +1922,7 @@ function ServicesManagementPage() {
 function TransactionsPage() { return <PlaceholderPage title="Transactions" description="View all financial transactions across the platform." icon={<CreditCard className="w-8 h-8" />} />; }
 function AccountingPage() { return <PlaceholderPage title="Accounting" description="Financial reports, ledgers, and accounting overview." icon={<DollarSign className="w-8 h-8" />} />; }
 function PayoutsPage() { return <PlaceholderPage title="Payouts" description="Manage vendor and personnel payout schedules and history." icon={<CreditCard className="w-8 h-8" />} />; }
-function PaymentQRPage() { return <PlaceholderPage title="Payment QR" description="Generate and manage QR codes for payments." icon={<CreditCard className="w-8 h-8" />} />; }
+
 function VouchersPage() { return <PlaceholderPage title="Vouchers" description="Create and manage promotional vouchers and discount codes." icon={<CreditCard className="w-8 h-8" />} />; }
 function AssignedVouchersPage() { return <PlaceholderPage title="Assigned Vouchers" description="Track vouchers assigned to specific customers or campaigns." icon={<CreditCard className="w-8 h-8" />} />; }
 
@@ -1940,7 +1940,7 @@ export default function AdminDashboard() {
             {/* Overview */}
             <Route path="calendar" element={<CalendarPage />} />
             {/* Communications */}
-            <Route path="chat-history" element={<ChatHistoryPage />} />
+
             <Route path="reviews" element={<ReviewsPage />} />
             {/* People */}
             <Route path="customers" element={<CustomersTab />} />
@@ -1954,7 +1954,7 @@ export default function AdminDashboard() {
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="accounting" element={<AccountingPage />} />
             <Route path="payouts" element={<PayoutsPage />} />
-            <Route path="payment-qr" element={<PaymentQRPage />} />
+
             <Route path="vouchers" element={<VouchersPage />} />
             <Route path="assigned-vouchers" element={<AssignedVouchersPage />} />
           </Routes>

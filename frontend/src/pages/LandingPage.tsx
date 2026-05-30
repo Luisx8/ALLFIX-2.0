@@ -429,14 +429,14 @@ const LandingPage = () => {
         <Navbar isLandingPage />
 
         {/* ===================== HERO SECTION ===================== */}
-        <Box sx={{ position: 'relative', pt: { xs: 10, sm: 12, lg: 16 }, pb: { xs: 6, sm: 8, lg: 10 }, minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', backgroundImage: "linear-gradient(to bottom, rgba(15, 23, 42, 0.6), rgba(7, 10, 19, 0.95)), url('/images/homepage.jpg')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+        <Box sx={{ position: 'relative', pt: { xs: 10, sm: 12, lg: 16 }, pb: { xs: 6, sm: 8, lg: 10 }, minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', backgroundImage: "linear-gradient(135deg, #06101E 0%, #0B1E36 100%)" }}>
           <Box sx={{ position: 'absolute', inset: 0, opacity: 0.04, backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")", backgroundRepeat: 'repeat', pointerEvents: 'none', zIndex: 0 }} />
           <Box sx={{ position: 'absolute', top: 80, left: 40, width: 288, height: 288, background: 'radial-gradient(circle, rgba(96, 165, 250, 0.4) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(96px)', opacity: 0.4, pointerEvents: 'none', zIndex: 0 }} />
           <Box sx={{ position: 'absolute', bottom: 80, right: 40, width: 288, height: 288, background: 'radial-gradient(circle, rgba(37, 99, 235, 0.4) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(96px)', opacity: 0.4, pointerEvents: 'none', zIndex: 0 }} />
 
-          <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 10 }}>
+          <Box sx={{ width: '100%', position: 'relative', zIndex: 10, px: { xs: 2, sm: 4, md: 5 } }}>
             <Grid container spacing={4} sx={{ width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Grid size={{ xs: 12, lg: 7 }} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: { xs: 'center', lg: 'flex-start' }, gap: 3, textAlign: { xs: 'center', lg: 'left' } }}>
+              <Grid size={{ xs: 12, lg: 7 }} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: { xs: 'center', lg: 'flex-start' }, gap: 3, textAlign: { xs: 'center', lg: 'left' }, pl: { xs: 0, lg: 8, xl: 16 } }}>
                 <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8, backgroundColor: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '9999px', px: 2, py: 0.7, mb: 0.5, backdropFilter: 'blur(10px)', width: 'fit-content' }}>
                   <Box sx={{ width: 6, height: 6, bgcolor: '#4ade80', borderRadius: '50%' }} />
                   <Typography sx={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'white' }}>
@@ -478,11 +478,12 @@ const LandingPage = () => {
                 <Box
                   sx={{
                     width: '100%',
-                    maxWidth: { xs: '450px', lg: '500px' },
+                    maxWidth: { xs: '100%', sm: '480px', lg: '540px', xl: '600px' },
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    mt: { xs: -3, lg: -14, xl: -20 }
                   }}
                 >
                   <img
@@ -491,8 +492,9 @@ const LandingPage = () => {
                     style={{
                       width: '100%',
                       height: 'auto',
-                      filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
-                      borderRadius: '16px'
+                      filter: 'drop-shadow(0 25px 50px rgba(0, 0, 0, 0.45))',
+                      borderRadius: '24px',
+                      objectFit: 'contain'
                     }}
                   />
                   
@@ -500,12 +502,12 @@ const LandingPage = () => {
                     variant="contained"
                     onClick={handleBookNowClick}
                     sx={{
-                      mt: 4,
+                      mt: 2.5,
                       width: '100%',
                       maxWidth: '320px',
                       bgcolor: '#041E41',
                       color: '#FFFFFF',
-                      border: '2px solid #041E41',
+                      border: '2px solid #FFFFFF',
                       fontWeight: 900,
                       fontSize: '1.15rem',
                       py: 1.6,
@@ -517,8 +519,8 @@ const LandingPage = () => {
                       '&:hover': {
                         bgcolor: '#FFFFFF',
                         color: '#041E41',
-                        borderColor: '#041E41',
-                        boxShadow: 'none'
+                        borderColor: '#FFFFFF',
+                        boxShadow: '0 8px 24px rgba(255, 255, 255, 0.2)'
                       }
                     }}
                   >
@@ -527,7 +529,7 @@ const LandingPage = () => {
                 </Box>
               </Grid>
             </Grid>
-          </Container>
+          </Box>
         </Box>
 
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ClipboardList, Wrench, Calendar, MessageSquare, Search, Star, Plus, Minus, Trash2, Edit, ShoppingBag, ArrowRight, AlertCircle, CheckCircle2, Clock, MapPin, CreditCard, ArrowLeft, User, ShieldAlert } from 'lucide-react';
+import { ClipboardList, Wrench, Calendar, Search, Star, Plus, Minus, Trash2, Edit, ShoppingBag, ArrowRight, AlertCircle, CheckCircle2, Clock, MapPin, CreditCard, ArrowLeft, User, ShieldAlert } from 'lucide-react';
 import { Sidebar } from '../components/shared/Sidebar';
 import { Header } from '../components/shared/Header';
 import { Card, StatCard } from '../components/shared/Card';
@@ -1155,10 +1155,7 @@ function MyBookingsTab() {
   );
 }
 
-// ─── Chat Tab ───────────────────────────────────────────────────────────────
-function ChatTab() {
-  return <EmptyState title="No messages" description="Chat with vendors about your bookings." icon={<MessageSquare className="w-8 h-8 text-slate-400" />} />;
-}
+
 
 // ─── Cart Tab ───────────────────────────────────────────────────────────────
 interface CartTabProps {
@@ -1970,7 +1967,7 @@ export default function CustomerApp() {
             <Route path="book" element={<BookingFormTab cart={cart} setCart={setCart} onCheckout={triggerCheckout} />} />
             <Route path="bookings" element={<MyBookingsTab />} />
             <Route path="cart" element={<CartTab cart={cart} setCart={setCart} onCheckout={triggerCheckout} />} />
-            <Route path="chat" element={<ChatTab />} />
+
             <Route path="profile" element={<ProfileTab />} />
           </Routes>
         </main>

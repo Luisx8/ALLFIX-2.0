@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Users, CalendarDays, MessageSquare, Star, ClipboardList,
+  LayoutDashboard, Users, CalendarDays, Star, ClipboardList,
   CreditCard, RefreshCcw, LifeBuoy, Settings, LogOut, ChevronLeft, ChevronRight,
   Home, Wrench, UserCog, Building2, ShoppingCart, User, MapPin, ChevronDown,
-  Eye, BarChart3, History, Truck, BookOpen, DollarSign, Receipt, QrCode,
+  Eye, BarChart3, History, Truck, BookOpen, DollarSign, Receipt,
   Ticket, Tag, Package, UserCheck
 } from 'lucide-react';
 import { logoutUser } from '../../services/firebaseService';
@@ -27,7 +27,6 @@ const menuSections: Record<UserRole, SidebarSection[]> = {
     {
       title: 'Communications',
       items: [
-        { label: 'Chat History', path: '/admin/chat-history', icon: <MessageSquare className="w-5 h-5" /> },
         { label: 'Reviews', path: '/admin/reviews', icon: <Star className="w-5 h-5" /> },
       ],
     },
@@ -52,7 +51,6 @@ const menuSections: Record<UserRole, SidebarSection[]> = {
         { label: 'Transactions', path: '/admin/transactions', icon: <Receipt className="w-5 h-5" /> },
         { label: 'Accounting', path: '/admin/accounting', icon: <DollarSign className="w-5 h-5" /> },
         { label: 'Payouts', path: '/admin/payouts', icon: <CreditCard className="w-5 h-5" /> },
-        { label: 'Payment QR', path: '/admin/payment-qr', icon: <QrCode className="w-5 h-5" /> },
         { label: 'Vouchers', path: '/admin/vouchers', icon: <Ticket className="w-5 h-5" /> },
         { label: 'Assigned Vouchers', path: '/admin/assigned-vouchers', icon: <Tag className="w-5 h-5" /> },
       ],
@@ -64,7 +62,6 @@ const menuSections: Record<UserRole, SidebarSection[]> = {
         { label: 'Home', path: '/customer', icon: <Home className="w-5 h-5" /> },
         { label: 'Bookings', path: '/customer/bookings', icon: <ClipboardList className="w-5 h-5" /> },
         { label: 'Cart', path: '/customer/cart', icon: <ShoppingCart className="w-5 h-5" /> },
-        { label: 'Chat', path: '/customer/chat', icon: <MessageSquare className="w-5 h-5" /> },
         { label: 'Profile', path: '/customer/profile', icon: <User className="w-5 h-5" /> },
       ],
     },
@@ -76,7 +73,6 @@ const menuSections: Record<UserRole, SidebarSection[]> = {
         { label: 'Schedule & Area', path: '/vendor/schedule', icon: <CalendarDays className="w-5 h-5" /> },
         { label: 'Bookings', path: '/vendor/bookings', icon: <ClipboardList className="w-5 h-5" /> },
         { label: 'Services', path: '/vendor/services', icon: <Wrench className="w-5 h-5" /> },
-        { label: 'Chat', path: '/vendor/chat', icon: <MessageSquare className="w-5 h-5" /> },
         { label: 'Personnels', path: '/vendor/personnel', icon: <UserCheck className="w-5 h-5" /> },
       ],
     },

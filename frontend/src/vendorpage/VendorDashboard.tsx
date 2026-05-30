@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { ClipboardList, TrendingUp, CalendarDays, UserCog, MessageSquare, Edit, Trash2, Users, X, Mail, User, Lock, Eye, EyeOff, Check, Plus, AlertCircle, Phone, Wrench, ArrowRight } from 'lucide-react';
+import { ClipboardList, TrendingUp, CalendarDays, UserCog, Edit, Trash2, Users, X, Mail, User, Lock, Eye, EyeOff, Check, Plus, AlertCircle, Phone, Wrench, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from '../components/shared/Sidebar';
 import { Header } from '../components/shared/Header';
@@ -1861,9 +1861,6 @@ function VendorServices({ dbServices, loadingDb, refreshServices }: { dbServices
   );
 }
 
-function VendorChat() {
-  return <EmptyState title="No messages" description="Chat with customers about bookings." icon={<MessageSquare className="w-8 h-8 text-slate-400" />} />;
-}
 
 export default function VendorDashboard() {
   const [collapsed, setCollapsed] = useState(false);
@@ -1897,7 +1894,7 @@ export default function VendorDashboard() {
             <Route path="schedule" element={<SlotCalendar dbServices={dbServices} />} />
             <Route path="bookings" element={<VendorBookings />} />
             <Route path="services" element={<VendorServices dbServices={dbServices} loadingDb={loadingDb} refreshServices={fetchServices} />} />
-            <Route path="chat" element={<VendorChat />} />
+
             <Route path="personnel" element={<VendorPersonnel dbServices={dbServices} />} />
           </Routes>
         </main>

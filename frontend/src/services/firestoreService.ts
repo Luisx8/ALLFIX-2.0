@@ -87,20 +87,6 @@ export function subscribeToNotifications(
   );
 }
 
-// ─── Messages (real-time chat per booking) ──────────────────────────────────
-
-export function subscribeToMessages(
-  bookingId: string,
-  callback: (messages: DocumentData[]) => void
-) {
-  return subscribeToCollection(
-    'messages',
-    callback,
-    where('booking_id', '==', bookingId),
-    orderBy('created_at', 'asc')
-  );
-}
-
 // ─── Re-exports for convenience ─────────────────────────────────────────────
 
 export { where, orderBy, limit, Timestamp };
