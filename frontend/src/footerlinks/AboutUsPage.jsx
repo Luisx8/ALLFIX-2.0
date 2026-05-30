@@ -199,15 +199,16 @@ const AboutUsPage = () => {
             </Box>
 
             {/* NEW STYLED SECTION: Why Choose AllFix */}
-            {/* Blue Gradient Background & Flexbox Vertical Stacking */}
+            {/* White Background & Premium soft shadows */}
             <Box sx={{ 
               mb: 6, 
               p: { xs: 3, md: 5 }, 
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, #10355f 0%, #1a3f70 100%)',
-              boxShadow: '0 8px 32px rgba(16, 53, 95, 0.2)'
+              bgcolor: '#FFFFFF',
+              border: '1px solid rgba(16, 53, 95, 0.12)',
+              boxShadow: '0 12px 40px rgba(16, 53, 95, 0.06), 0 2px 10px rgba(16, 53, 95, 0.04)'
             }}>
-              <Typography variant="h3" fontWeight="800" color="white" sx={{ mb: 4, fontSize: '1.8rem' }}>
+              <Typography variant="h3" fontWeight="800" color="#10355f" sx={{ mb: 4, fontSize: '1.8rem' }}>
                 Why Choose AllFix
               </Typography>
               
@@ -225,12 +226,12 @@ const AboutUsPage = () => {
                     <Box sx={{ 
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       width: 28, height: 28, borderRadius: '50%', 
-                      bgcolor: 'rgba(255,255,255,0.15)', 
+                      bgcolor: '#eaf2fc', 
                       flexShrink: 0 
                     }}>
-                      <Typography sx={{ color: 'white', fontSize: '0.85rem', fontWeight: 'bold' }}>✓</Typography>
+                      <Typography sx={{ color: '#2E5BA8', fontSize: '0.85rem', fontWeight: 'bold' }}>✓</Typography>
                     </Box>
-                    <Typography sx={{ color: 'white', fontSize: '1.05rem', lineHeight: 1.6, fontWeight: 500 }}>
+                    <Typography sx={{ color: '#334155', fontSize: '1.05rem', lineHeight: 1.6, fontWeight: 500 }}>
                       {item}
                     </Typography>
                   </Box>

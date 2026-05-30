@@ -3,6 +3,7 @@ import { Box, Typography, Button, Container, Grid, AppBar, Toolbar, IconButton, 
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../components/shared/Navbar';
 import { Footer } from '../components/shared/Footer';
+import { useAuth } from '../context/AuthContext';
 
 // --- Testimonial Data ---
 const testimonials = [
@@ -279,12 +280,25 @@ const LandingPage = () => {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const handlePrev = () => setTestimonialIdx((prev) => (prev === 0 ? testimonials.length - 1 : prev - 1));
   const handleNext = () => setTestimonialIdx((prev) => (prev === testimonials.length - 1 ? 0 : prev + 1));
-  
-  // Account Form State
-  const [acctForm, setAcctForm] = useState({ firstName: '', lastName: '', username: '', email: '' });
-  const [acctErrors, setAcctErrors] = useState<Record<string, string>>({});
-  const [usernameCheckLoading, setUsernameCheckLoading] = useState(false);
-  const [usernameValid, setUsernameValid] = useState(false);
+  const { isAuthenticated, role } = useAuth();
+
+  const handleBookNowClick = () => {
+    console.log("[CAVEMAN] Book Now button clicked! Auth state:", { isAuthenticated, role });
+    if (isAuthenticated) {
+      if (role === 'customer') {
+        navigate('/customer/book');
+      } else {
+        navigate(role === 'admin' ? '/admin' : role === 'vendor' ? '/vendor' : '/personnel');
+      }
+    } else {
+      navigate('/login');
+    }
+    window.scrollTo(0, 0);
+  };
+
+  useEffect(() => {
+    console.log("[CAVEMAN] LandingPage home section loaded with new transparent illustration and dark-blue button styles!");
+  }, []);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -370,76 +384,6 @@ const LandingPage = () => {
     return () => clearInterval(colorInterval);
   }, []);
 
-  const checkUsername = async (username: string) => {
-    if (!username || username.length < 3) {
-      setAcctErrors(prev => ({ ...prev, username: 'Min 3 chars' }));
-      setUsernameValid(false);
-      return;
-    }
-    setUsernameCheckLoading(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/auth/check-username?username=${encodeURIComponent(username)}`);
-      
-      if (!res.ok) {
-        setUsernameValid(true);
-        setAcctErrors(prev => { const e = { ...prev }; delete e.username; return e; });
-        return;
-      }
-
-      const data = await res.json();
-      if (data.available) {
-        setUsernameValid(true);
-        setAcctErrors(prev => { const e = { ...prev }; delete e.username; return e; });
-      } else {
-        setAcctErrors(prev => ({ ...prev, username: 'Username taken' }));
-        setUsernameValid(false);
-      }
-    } catch {
-      setUsernameValid(true);
-      setAcctErrors(prev => { const e = { ...prev }; delete e.username; return e; });
-    } finally {
-      setUsernameCheckLoading(false);
-    }
-  };
-
-  const handleCreateAccountClick = () => {
-    const errors: Record<string, string> = {};
-    if (!acctForm.firstName.trim()) errors.firstName = 'Required';
-    if (!acctForm.lastName.trim()) errors.lastName = 'Required';
-    if (!acctForm.username.trim()) errors.username = 'Required';
-    else if (!usernameValid && !acctErrors.username) errors.username = 'Invalid username';
-    if (acctErrors.username) errors.username = acctErrors.username;
-    if (!acctForm.email.trim()) errors.email = 'Required';
-
-    if (Object.keys(errors).length > 0) {
-      setAcctErrors(errors);
-    } else {
-      setAcctErrors({});
-      navigate('/register', { state: { prefillData: acctForm } });
-    }
-  };
-
-  const handleAcctFormChange = (field: string, value: string) => {
-    let newValue = value;
-    if (field === 'firstName' || field === 'lastName') {
-      if (newValue.length > 0) {
-        newValue = newValue.charAt(0).toUpperCase() + newValue.slice(1);
-      }
-    } else if (field === 'username') {
-      newValue = newValue.replace(/[^a-zA-Z0-9]/g, '');
-      setUsernameValid(false);
-    }
-    setAcctForm(prev => ({ ...prev, [field]: newValue }));
-    
-    // Clear error automatically when user typing
-    if (acctErrors[field]) {
-      setAcctErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
 
   const navLinks = [
     { label: 'Services', href: '#services' },
@@ -530,49 +474,56 @@ const LandingPage = () => {
                 </Box>
               </Grid>
 
-              <Grid size={{ xs: 12, lg: 5 }} sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-                <Box sx={{ bgcolor: 'white', borderRadius: '16px', p: { xs: 2.5, sm: 4, lg: 3 }, boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)', width: '100%', maxWidth: { xs: '98vw', sm: '600px', lg: '480px' }, mx: 'auto', mt: { xs: 2, lg: -4 } }}>
-                  <Typography sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem', lg: '1.25rem' }, fontWeight: 900, color: '#10355f', mb: 0.5, lineHeight: 1.2, textAlign: 'center' }}>
-                    Create Your Account
-                  </Typography>
-                  <Typography sx={{ fontSize: { xs: '0.85rem', sm: '1rem', lg: '0.85rem' }, color: '#666', mb: 2, lineHeight: 1.3, textAlign: 'center' }}>
-                    Fill in the details below to create your AllFix account.
-                  </Typography>
-
-                  {/* Firstname and Lastname */}
-                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 1.5 }}>
-                    <Box>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#10355f', mb: 0.5 }}>Firstname <span style={{ color: '#e74c3c' }}>*</span></Typography>
-                      <TextField size="small" fullWidth placeholder="Enter Your First Name" value={acctForm.firstName} onChange={(e) => handleAcctFormChange('firstName', e.target.value)} error={!!acctErrors.firstName} helperText={acctErrors.firstName} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.85rem', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#bbb' } } }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#10355f', mb: 0.5 }}>Lastname <span style={{ color: '#e74c3c' }}>*</span></Typography>
-                      <TextField size="small" fullWidth placeholder="Enter Your Last Name" value={acctForm.lastName} onChange={(e) => handleAcctFormChange('lastName', e.target.value)} error={!!acctErrors.lastName} helperText={acctErrors.lastName} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.85rem', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#bbb' } } }} />
-                    </Box>
-                  </Box>
-
-                  {/* Username and Email */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 1.5 }}>
-                    <Box>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#10355f', mb: 0.5 }}>Username <span style={{ color: '#e74c3c' }}>*</span></Typography>
-                      <TextField size="small" fullWidth placeholder="Choose a username" value={acctForm.username} onChange={(e) => handleAcctFormChange('username', e.target.value)} onBlur={() => acctForm.username && checkUsername(acctForm.username)} error={!!acctErrors.username} helperText={usernameCheckLoading ? 'Checking...' : acctErrors.username} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.85rem', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#bbb' } } }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#10355f', mb: 0.5 }}>Email address <span style={{ color: '#e74c3c' }}>*</span></Typography>
-                      <TextField size="small" fullWidth placeholder="name@example.com" value={acctForm.email} onChange={(e) => handleAcctFormChange('email', e.target.value)} error={!!acctErrors.email} helperText={acctErrors.email} slotProps={{ input: { startAdornment: <Typography sx={{ mr: 1, color: '#999', fontSize: '1rem' }}>✉</Typography> } }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.85rem', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#bbb' } } }} />
-                    </Box>
-                  </Box>
-
-                  {/* Buttons */}
-                  <Button variant="contained" fullWidth onClick={handleCreateAccountClick} sx={{ bgcolor: '#10355f', color: 'white', fontWeight: 900, fontSize: '0.9rem', py: 1.2, borderRadius: '50px', textTransform: 'none', mb: 1.5, mt: 1.5, boxShadow: '0 2px 8px rgba(16,53,95,0.10)', '&:hover': { bgcolor: '#0d264a' } }}>
-                    Create Account
+              <Grid size={{ xs: 12, lg: 5 }} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <Box
+                  sx={{
+                    width: '100%',
+                    maxWidth: { xs: '450px', lg: '500px' },
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <img
+                    src="/images/cleaning-illustration.png"
+                    alt="AllFix Services Illustration"
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      filter: 'drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3))',
+                      borderRadius: '16px'
+                    }}
+                  />
+                  
+                  <Button
+                    variant="contained"
+                    onClick={handleBookNowClick}
+                    sx={{
+                      mt: 4,
+                      width: '100%',
+                      maxWidth: '320px',
+                      bgcolor: '#041E41',
+                      color: '#FFFFFF',
+                      border: '2px solid #041E41',
+                      fontWeight: 900,
+                      fontSize: '1.15rem',
+                      py: 1.6,
+                      px: 4,
+                      borderRadius: '50px',
+                      textTransform: 'none',
+                      boxShadow: 'none',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        bgcolor: '#FFFFFF',
+                        color: '#041E41',
+                        borderColor: '#041E41',
+                        boxShadow: 'none'
+                      }
+                    }}
+                  >
+                    Book Now
                   </Button>
-                  <Box sx={{ mt: 1.5, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: '0.85rem', color: '#10355f', mb: 1, fontWeight: 700 }}>Already have an account?</Typography>
-                    <Button variant="contained" fullWidth sx={{ bgcolor: '#fff', color: '#10355f', border: '2px solid #10355f', borderRadius: '50px', fontWeight: 900, fontSize: '0.9rem', py: 1, mt: 0.5, mb: 0.5, boxShadow: '0 2px 8px rgba(16,53,95,0.10)', textTransform: 'none', '&:hover': { bgcolor: '#10355f', color: '#fff', borderColor: '#0d264a' } }} href="/login">
-                      Login
-                    </Button>
-                  </Box>
                 </Box>
               </Grid>
             </Grid>
@@ -698,7 +649,7 @@ const LandingPage = () => {
                   <Typography sx={{ fontSize: '0.85rem', opacity: 0.9, lineHeight: 1.5, mb: 2, maxWidth: '95%' }}>
                     A background-checked AllFix pro arrives on schedule, completes the job, and you pay only when satisfied.
                   </Typography>
-                  <Box onClick={() => { navigate('/signup'); window.scrollTo(0, 0); }} sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, color: 'white', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.3s ease', '&:hover': { gap: 1.5, opacity: 0.8 } }}>
+                  <Box onClick={handleBookNowClick} sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, color: 'white', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer', transition: 'all 0.3s ease', '&:hover': { gap: 1.5, opacity: 0.8 } }}>
                     Start Booking
                     <ArrowForwardIcon sx={{ fontSize: '1.1rem', transition: 'transform 0.3s ease' }} />
                   </Box>

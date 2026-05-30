@@ -1395,13 +1395,15 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
       setCity((profile as any).city || '');
       setBarangay((profile as any).barangay || '');
       if ((profile as any).street) setStreet((profile as any).street);
+      setUnitNo((profile as any).unit_house_no || '');
+      setPostalCode((profile as any).postal_code || '');
     }
   }, [isOpen, profile]);
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 2) {
-      if (!street.trim() || !barangay.trim() || !city.trim() || !postalCode.trim()) {
+      if (!unitNo.trim() || !street.trim() || !barangay.trim() || !city.trim()) {
         alert("Please complete all required address fields.");
         return;
       }
@@ -1430,7 +1432,18 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
     console.log("[CAVEMAN] Finalizing checkout. Creating bookings...");
     setLoading(true);
     try {
-      const fullAddress = `${unitNo ? unitNo + ' ' : ''}${street}, Brgy. ${barangay}, ${city}, ${postalCode}`.trim();
+      const addressParts = [
+        unitNo.trim(),
+        street.trim(),
+        `Brgy. ${barangay.trim()}`,
+        city.trim()
+      ];
+      if (postalCode.trim()) {
+        addressParts.push(postalCode.trim());
+      }
+      const fullAddress = addressParts.join(', ');
+      console.log("[CAVEMAN] Constructed fullAddress:", fullAddress);
+
       const bookingsCreated = [];
 
       for (const item of cart) {
@@ -1448,6 +1461,9 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
           quantity: item.quantity,
           total_price: item.total,
           address: fullAddress,
+          service_address: fullAddress,
+          unit_house_no: unitNo,
+          postal_code: postalCode,
           payment_method: paymentMethod,
           payment_reference: referenceNumber,
           voucher_code: voucherCode || null,
@@ -1582,6 +1598,29 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
                 <span className="text-xl font-black text-brand-green">₱{totalAmount}</span>
               </div>
             </div>
+
+            {/* Address Review (Visible on Desktop when step >= 3) */}
+            {step >= 3 && (
+              <div className="hidden lg:block pt-4 mt-4 border-t border-slate-200 dark:border-slate-700/80 space-y-2 text-xs">
+                <p className="font-extrabold text-slate-400 uppercase tracking-wider text-[10px]">Service Location</p>
+                <div className="text-slate-700 dark:text-slate-350 bg-white/50 dark:bg-slate-900/30 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50 leading-relaxed">
+                  <p className="font-bold text-slate-900 dark:text-white">
+                    {unitNo}
+                  </p>
+                  <p>
+                    {street}, Brgy. {barangay}
+                  </p>
+                  <p>
+                    {city}
+                  </p>
+                  {postalCode && (
+                    <p className="text-[11px] text-slate-400 font-medium mt-1">
+                      Postal Code: {postalCode}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Step Wizard Forms (2/3 scale) */}
@@ -1597,12 +1636,13 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Unit / House No. / Building (Optional)</label>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Unit / House No. / Building *</label>
                       <input
                         type="text"
                         value={unitNo}
                         onChange={(e) => setUnitNo(e.target.value)}
-                        placeholder="House No., Apt, Floor, etc."
+                        placeholder="e.g. Unit 5B, Building A"
+                        required
                         className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
                       />
                     </div>
@@ -1644,13 +1684,12 @@ function CheckoutModal({ isOpen, onClose, cart, onSuccess }: CheckoutModalProps)
                     </div>
 
                     <div>
-                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Postal Code / ZIP *</label>
+                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-455 mb-1 sm:mb-1.5">Postal Code / ZIP (Optional)</label>
                       <input
                         type="text"
                         value={postalCode}
                         onChange={(e) => setPostalCode(e.target.value)}
                         placeholder="e.g. 1000"
-                        required
                         className="w-full px-4 py-2.5 sm:py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy placeholder:text-slate-400"
                       />
                     </div>

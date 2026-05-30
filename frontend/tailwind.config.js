@@ -12,7 +12,7 @@ export default {
           navy: '#041e41',
           green: '#20b759',
           yellow: '#ffbd00',
-          red: '#e8493d',
+          red: '#ef4444',
         },
         surface: {
           light: '#f1f5f9',
